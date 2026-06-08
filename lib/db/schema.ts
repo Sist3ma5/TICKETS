@@ -1,16 +1,15 @@
 import { relations } from 'drizzle-orm'
 import {
-    index,
-    integer,
-    pgEnum,
-    pgTable,
-    primaryKey,
-    text,
-    timestamp,
-    uuid,
-    varchar,
+  boolean,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
 } from 'drizzle-orm/pg-core'
-import type { AdapterAccountType } from 'next-auth/adapters'
 
 // ============================================================
 // Enums
@@ -41,73 +40,76 @@ export const ticketCategoryEnum = pgEnum('ticket_category', [
 ])
 
 // ============================================================
-// Auth.js — tablas requeridas por el adapter de Drizzle
-// (extendemos `users` con campos propios)
+// Auth
 // ============================================================
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name'),
+  name: text('name').notNull(),
   email: text('email').notNull().unique(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
   role: userRoleEnum('role').notNull().default('user'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 export const accounts = pgTable('accounts', {
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    type: text('type').$type<AdapterAccountType>().notNull(),
-    provider: text('provider').notNull(),
-    providerAccountId: text('provider_account_id').notNull(),
-    refresh_token: text('refresh_token'),
-    access_token: text('access_token'),
-    expires_at: integer('expires_at'),
-    token_type: text('token_type'),
-    scope: text('scope'),
-    id_token: text('id_token'),
-    session_state: text('session_state'),
-  },
-  (account) => ({
-    compoundKey: primaryKey({
-      columns: [account.provider, account.providerAccountId],
-    }),
-  }),
-)
-
-// Expected by NextAuth.js for sessions management, not actually needed.
-export const sessions = pgTable('sessions', {
-  sessionToken: text('session_token').primaryKey(),
+  id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  expires: timestamp('expires', { mode: 'date' }).notNull(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
-export const verificationTokens = pgTable(
-  'verification_tokens',
-  {
-    identifier: text('identifier').notNull(),
-    token: text('token').notNull(),
-    expires: timestamp('expires', { mode: 'date' }).notNull(),
-  },
-  (vt) => ({
-    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
-  }),
-)
+export const sessions = pgTable('sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+export const verifications = pgTable('verifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
 
 // ============================================================
 // Dominio: tickets
 // ============================================================
 
-export const tickets = pgTable('tickets', {
+export const tickets = pgTable(
+  'tickets',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     title: varchar('title', { length: 200 }).notNull(),
     description: text('description').notNull(),
     status: ticketStatusEnum('status').notNull().default('open'),
     priority: ticketPriorityEnum('priority').notNull().default('medium'),
     category: ticketCategoryEnum('category').notNull().default('other'),
-    createdById: uuid('created_by_id').notNull().references(() => users.id),
+    createdById: uuid('created_by_id')
+      .notNull()
+      .references(() => users.id),
     assignedToId: uuid('assigned_to_id').references(() => users.id),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -273,6 +275,30 @@ export const ticketAttachmentsRelations = relations(
       fields: [ticketAttachments.uploadedById],
       references: [users.id],
     }),
+  }),
+)
+
+export const ticketAssignmentHistory = pgTable(
+  'ticket_assignment_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ticketId: uuid('ticket_id')
+      .notNull()
+      .references(() => tickets.id, { onDelete: 'cascade' }),
+    changedById: uuid('changed_by_id')
+      .notNull()
+      .references(() => users.id),
+    // null = el ticket no tenía asignado antes
+    fromUserId: uuid('from_user_id').references(() => users.id),
+    // null = se está desasignando el ticket
+    toUserId: uuid('to_user_id').references(() => users.id),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    ticketIdx: index('ticket_assignment_history_ticket_idx').on(
+      t.ticketId,
+      t.createdAt,
+    ),
   }),
 )
 

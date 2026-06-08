@@ -1,0 +1,72 @@
+import {
+  TicketInteractiveSection,
+  type TimelineItem,
+} from '@/components/tickets/ticket-interactive-section'
+import { Separator } from '@/components/ui/separator'
+
+import type { TicketDetails } from '@/lib/db/queries/tickets'
+import { getITUsers } from '@/lib/db/queries/tickets'
+import type { UserRole } from '@/lib/db/schema'
+
+interface TicketDetailProps {
+  ticket: TicketDetails
+  currentUserRole: UserRole
+}
+
+export async function TicketDetail({
+  ticket,
+  currentUserRole,
+}: TicketDetailProps) {
+  const isIT = currentUserRole === 'it'
+  const itUsers = isIT ? await getITUsers() : []
+
+  const timeline: TimelineItem[] = [
+    ...ticket.comments.map((c) => ({
+      kind: 'comment' as const,
+      data: c,
+      createdAt: c.comment.createdAt,
+    })),
+    ...ticket.statusHistory.map((h) => ({
+      kind: 'activity' as const,
+      data: { type: 'status' as const, ...h },
+      createdAt: h.entry.changedAt,
+    })),
+    ...ticket.assignmentHistory.map((h) => ({
+      kind: 'activity' as const,
+      data: { type: 'assignment' as const, ...h },
+      createdAt: h.entry.createdAt,
+    })),
+  ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+
+  return (
+    <div className="space-y-8">
+      {/* Header — siempre estático */}
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight text-balance">
+          {ticket.ticket.title}
+        </h1>
+      </header>
+
+      {/* Descripción — siempre estática */}
+      <Separator />
+      <section className="space-y-3">
+        <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+          Descripción
+        </h2>
+        <p className="whitespace-pre-wrap wrap-break-words text-sm leading-relaxed">
+          {ticket.ticket.description}
+        </p>
+      </section>
+
+      {/* Todo lo interactivo */}
+      <TicketInteractiveSection
+        ticket={ticket.ticket}
+        creator={ticket.creator}
+        assignee={ticket.assignee}
+        itUsers={itUsers}
+        currentUserRole={currentUserRole}
+        timeline={timeline}
+      />
+    </div>
+  )
+}

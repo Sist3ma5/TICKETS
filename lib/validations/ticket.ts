@@ -19,4 +19,13 @@ export const createTicketSchema = z.object({
   }),
 })
 
+export const commentBodySchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, 'El comentario no puede estar vacío')
+    .max(2000, 'Máximo 2000 caracteres'),
+})
+
 export type CreateTicketInput = z.infer<typeof createTicketSchema>
+export type CommentBodyInput = z.infer<typeof commentBodySchema>

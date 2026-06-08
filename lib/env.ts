@@ -1,29 +1,24 @@
 import { z } from 'zod'
 
 const envSchema = z.object({
-  // Database
-  DATABASE_URL: z.string().url(),
-  DATABASE_URL_UNPOOLED: z.string().url(),
+  // Base de datos
+  DATABASE_URL: z.string().min(1),
+  DATABASE_URL_UNPOOLED: z.string().min(1),
 
-  // Auth
-  AUTH_SECRET: z.string().min(32),
-  AUTH_GOOGLE_ID: z.string().min(0).optional(),
-  AUTH_GOOGLE_SECRET: z.string().min(0).optional(),
-  AUTH_TRUST_HOST: z.string().optional(),
-  GOOGLE_WORKSPACE_DOMAIN: z.string().min(1),
+  // Better Auth
+  BETTER_AUTH_SECRET: z.string().min(1),
+  BETTER_AUTH_URL: z.string().min(1).optional(),
 
-  // Roles
-  IT_EMAILS: z.string().min(1),
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
 
-  // Email
-  RESEND_API_KEY: z.string().min(1),
-  EMAIL_FROM: z.string().email(),
+  // Email — placeholder, no requerido aún
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 
-  // Storage
-  BLOB_READ_WRITE_TOKEN: z.string().min(0).optional(),
-
-  // App
-  NEXT_PUBLIC_APP_URL: z.string().url(),
+  // Storage — diferido
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -37,11 +32,3 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data
-
-export const IT_EMAIL_SET = new Set(
-  env.IT_EMAILS.split(',').map((e) => e.trim().toLowerCase()),
-)
-
-export const isOAuthConfigured = Boolean(
-  env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET,
-)
