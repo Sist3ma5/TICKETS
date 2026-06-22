@@ -8,14 +8,17 @@ import {
   ticketComments,
   tickets,
   ticketStatusHistory,
+  users,
 } from '@/lib/db/schema'
 import {
   createTicketSchema,
   type CreateTicketInput,
 } from '@/lib/validations/ticket'
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { after } from 'next/server'
+import { notifyNewComment, notifyStatusChange } from '@/lib/email/notifications'
 
 type CreateTicketResult =
   | { ok: true; ticketId: string }
@@ -87,7 +90,6 @@ export async function createTicket(
 export async function addComment(input: { ticketId: string; body: string }) {
   const user = await requireUser()
 
-  // Validación combinada (body del usuario + ticketId que controlamos)
   const parsed = z
     .object({
       ticketId: z.string().uuid(),
@@ -96,17 +98,14 @@ export async function addComment(input: { ticketId: string; body: string }) {
     .safeParse(input)
 
   if (!parsed.success) {
-    return {
-      ok: false as const,
-      message: 'Datos inválidos',
-    }
+    return { ok: false as const, message: 'Datos inválidos' }
   }
 
   const { ticketId, body } = parsed.data
 
-  // Verificar que el usuario puede comentar (misma regla que canView)
   const [ticket] = await db
     .select({
+      title: tickets.title,
       createdById: tickets.createdById,
       assignedToId: tickets.assignedToId,
     })
@@ -127,23 +126,49 @@ export async function addComment(input: { ticketId: string; body: string }) {
     return { ok: false as const, message: 'No tienes permiso para comentar' }
   }
 
+  // Insert del comentario — esto SÍ es crítico
   try {
     await db.insert(ticketComments).values({
       ticketId,
       authorId: user.id,
       body,
     })
-
-    // TODO: notificar por email (al creador si comenta IT, a IT si comenta usuario)
-
-    return { ok: true as const }
   } catch (err) {
     console.error('Error agregando comentario:', err)
-    return {
-      ok: false as const,
-      message: 'No se pudo agregar el comentario',
-    }
+    return { ok: false as const, message: 'No se pudo agregar el comentario' }
   }
+
+  // Email — best-effort, corre DESPUÉS de responder al usuario.
+  // Notifica al creador y al asignado, excluyendo a quien comentó.
+  after(async () => {
+    try {
+      const recipientIds = [
+        ...new Set(
+          [ticket.createdById, ticket.assignedToId].filter(
+            (id): id is string => !!id && id !== user.id,
+          ),
+        ),
+      ]
+      if (recipientIds.length === 0) return
+
+      const recipients = await db
+        .select({ email: users.email, name: users.name })
+        .from(users)
+        .where(inArray(users.id, recipientIds))
+
+      await notifyNewComment({
+        ticketId,
+        ticketTitle: ticket.title,
+        commentBody: body,
+        authorName: user.name ?? user.email,
+        recipients,
+      })
+    } catch (err) {
+      console.error('[email] Error al notificar nuevo comentario:', err)
+    }
+  })
+
+  return { ok: true as const }
 }
 
 export async function updateTicketDetails(input: {
@@ -152,7 +177,6 @@ export async function updateTicketDetails(input: {
   assignedToId?: string | null
 }) {
   const user = await requireITUser()
-
   const { ticketId, status: newStatus, assignedToId: newAssignedToId } = input
 
   // Estado actual del ticket
@@ -161,6 +185,8 @@ export async function updateTicketDetails(input: {
       status: tickets.status,
       assignedToId: tickets.assignedToId,
       closedAt: tickets.closedAt,
+      createdById: tickets.createdById, // ← para notificar al creador
+      title: tickets.title, // ← para el asunto del correo
     })
     .from(tickets)
     .where(eq(tickets.id, ticketId))
@@ -179,7 +205,6 @@ export async function updateTicketDetails(input: {
 
   // Detectar qué cambió
   const statusChanged = newStatus !== undefined && newStatus !== current.status
-
   const assignmentChanged =
     newAssignedToId !== undefined && newAssignedToId !== current.assignedToId
 
@@ -205,8 +230,8 @@ export async function updateTicketDetails(input: {
     updates.assignedToId = newAssignedToId ?? null
   }
 
+  // Update + historiales — crítico
   try {
-    // Actualizar el ticket
     await db.update(tickets).set(updates).where(eq(tickets.id, ticketId))
 
     // Registrar historial de estado (best-effort)
@@ -240,12 +265,36 @@ export async function updateTicketDetails(input: {
     // Revalidar listas (no el detalle — eso lo hace router.refresh() en el cliente)
     revalidatePath('/tickets')
     revalidatePath('/tickets/all')
-
-    return { ok: true as const }
   } catch (err) {
     console.error('Error al actualizar ticket:', err)
     return { ok: false as const, message: 'No se pudo actualizar el ticket' }
   }
+
+  // Email del cambio de estado al creador — best-effort, post-respuesta.
+  // No se manda si el propio creador hizo el cambio.
+  if (statusChanged && current.createdById !== user.id) {
+    after(async () => {
+      try {
+        const [creator] = await db
+          .select({ email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, current.createdById))
+          .limit(1)
+
+        await notifyStatusChange({
+          ticketId,
+          ticketTitle: current.title,
+          fromStatus: current.status,
+          toStatus: newStatus!,
+          recipient: creator ?? null,
+        })
+      } catch (err) {
+        console.error('[email] Error al notificar cambio de estado:', err)
+      }
+    })
+  }
+
+  return { ok: true as const }
 }
 
 export async function deleteTicket(ticketId: string) {

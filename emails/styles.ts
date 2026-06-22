@@ -1,0 +1,50 @@
+export const styles = {
+  body: {
+    backgroundColor: '#f4f4f5',
+    fontFamily:
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    padding: '32px 0',
+  },
+  container: {
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    padding: '32px',
+    maxWidth: '480px',
+    margin: '0 auto',
+    border: '1px solid #e4e4e7',
+  },
+  brand: {
+    fontSize: '18px',
+    fontWeight: 'bold' as const,
+    color: '#09090b',
+    margin: '0',
+  },
+  hr: { borderColor: '#e4e4e7', margin: '20px 0' },
+  text: {
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: '#3f3f46',
+    margin: '0 0 12px',
+  },
+  comment: {
+    fontSize: '14px',
+    lineHeight: '1.6',
+    color: '#3f3f46',
+    backgroundColor: '#f4f4f5',
+    borderRadius: '6px',
+    padding: '12px 16px',
+    margin: '0 0 12px',
+    whiteSpace: 'pre-wrap' as const,
+    wordBreak: 'break-word' as const,
+  },
+  button: {
+    backgroundColor: '#09090b',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    padding: '10px 20px',
+    borderRadius: '6px',
+    textDecoration: 'none',
+  },
+  footer: { fontSize: '12px', color: '#a1a1aa', margin: '0' },
+}
