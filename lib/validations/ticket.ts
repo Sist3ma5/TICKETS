@@ -14,9 +14,20 @@ export const createTicketSchema = z.object({
   priority: z.enum(['low', 'medium', 'high'], {
     message: 'Selecciona una prioridad',
   }),
-  category: z.enum(['hardware', 'software', 'network', 'access', 'other'], {
-    message: 'Selecciona una categoría',
-  }),
+  category: z.enum(
+    [
+      'hardware',
+      'software',
+      'network',
+      'access',
+      'goodteam',
+      'compras',
+      'other',
+    ],
+    {
+      message: 'Selecciona una categoría',
+    },
+  ),
 })
 
 export const commentBodySchema = z.object({

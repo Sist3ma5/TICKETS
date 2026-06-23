@@ -37,6 +37,8 @@ export const ticketCategoryEnum = pgEnum('ticket_category', [
   'network',
   'access',
   'other',
+  'goodteam',
+  'compras',
 ])
 
 // ============================================================

@@ -23,6 +23,8 @@ export const CATEGORY_LABELS: Record<TicketCategory, string> = {
   software: 'Software',
   network: 'Red',
   access: 'Accesos',
+  goodteam: 'Good Team',
+  compras: 'Compras de Equipo',
   other: 'Otro',
 }
 
