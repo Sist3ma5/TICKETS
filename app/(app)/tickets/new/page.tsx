@@ -1,6 +1,8 @@
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
 import { getNextTicketNumber } from '@/lib/db/queries/tickets'
 
+export const dynamic = 'force-dynamic'
+
 export default async function NewTicketPage() {
   const nextNumber = await getNextTicketNumber()
 

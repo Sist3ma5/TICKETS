@@ -8,6 +8,9 @@ import {
 import { getCurrentUser } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 
+// La app es 100% autenticada y con datos en vivo: nada se pre-renderiza en build.
+export const dynamic = 'force-dynamic'
+
 export default async function AppLayout({
   children,
   modal,

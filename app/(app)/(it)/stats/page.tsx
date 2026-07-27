@@ -10,6 +10,8 @@ import {
 } from '@/lib/constants'
 import { getCategoryCounts, getStatusCounts } from '@/lib/db/queries/tickets'
 
+export const dynamic = 'force-dynamic'
+
 export default async function StatsPage() {
   const [statusCounts, categoryCounts] = await Promise.all([
     getStatusCounts({}),
