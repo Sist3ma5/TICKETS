@@ -1,24 +1,35 @@
-import { Badge } from '@/components/ui/badge'
-import { STATUS_LABELS } from '@/lib/constants'
+import { STATUS_COLORS, STATUS_LABELS } from '@/lib/constants'
 import type { TicketStatus } from '@/lib/db/schema'
-
-const dotColors: Record<TicketStatus, string> = {
-  open: 'bg-blue-500',
-  in_progress: 'bg-amber-500',
-  waiting_user: 'bg-red-500',
-  resolved: 'bg-emerald-500',
-  closed: 'bg-zinc-400',
-}
+import { cn } from '@/lib/utils'
 
 interface TicketStatusBadgeProps {
   status: TicketStatus
+  className?: string
 }
 
-export function TicketStatusBadge({ status }: TicketStatusBadgeProps) {
+export function TicketStatusBadge({
+  status,
+  className,
+}: TicketStatusBadgeProps) {
+  const color = STATUS_COLORS[status]
+
   return (
-    <Badge variant="outline" className="gap-1.5 font-semibold">
-      <span className={`size-1.5 rounded-full ${dotColors[status]}`} />
+    <span
+      className={cn(
+        'inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+        className,
+      )}
+      style={{
+        color,
+        backgroundColor: `${color}1f`,
+        borderColor: `${color}40`,
+      }}
+    >
+      <span
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+      />
       {STATUS_LABELS[status]}
-    </Badge>
+    </span>
   )
 }

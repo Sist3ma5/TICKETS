@@ -4,6 +4,7 @@ import {
 } from '@/components/tickets/ticket-interactive-section'
 import { Separator } from '@/components/ui/separator'
 
+import { formatTicketCode } from '@/lib/constants'
 import type { TicketDetails } from '@/lib/db/queries/tickets'
 import { getITUsers } from '@/lib/db/queries/tickets'
 import type { UserRole } from '@/lib/db/schema'
@@ -41,7 +42,10 @@ export async function TicketDetail({
   return (
     <div className="space-y-8">
       {/* Header — siempre estático */}
-      <header>
+      <header className="space-y-1.5">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          {formatTicketCode(ticket.ticket.category, ticket.ticket.number)}
+        </span>
         <h1 className="text-2xl font-bold tracking-tight text-balance">
           {ticket.ticket.title}
         </h1>
@@ -63,6 +67,7 @@ export async function TicketDetail({
         ticket={ticket.ticket}
         creator={ticket.creator}
         assignee={ticket.assignee}
+        attachments={ticket.attachments}
         itUsers={itUsers}
         currentUserRole={currentUserRole}
         timeline={timeline}

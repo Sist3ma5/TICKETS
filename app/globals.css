@@ -73,48 +73,50 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Barra lateral SIEMPRE oscura, aunque el resto de la página sea blanca. */
+  --sidebar: #0c1017;
+  --sidebar-foreground: #f4f6fa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a2130;
+  --sidebar-accent-foreground: #f4f6fa;
+  --sidebar-border: #252c39;
+  --sidebar-ring: #3b82f6;
 }
 
+/* Tema oscuro — paleta tomada del prototipo de Bailmex Tickets. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #090c12;
+  --foreground: #f4f6fa;
+  --card: #0f141d;
+  --card-foreground: #f4f6fa;
+  --popover: #0f141d;
+  --popover-foreground: #f4f6fa;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #141a25;
+  --secondary-foreground: #f4f6fa;
+  --muted: #141a25;
+  --muted-foreground: #8993a5;
+  --accent: #141a25;
+  --accent-foreground: #f4f6fa;
+  --destructive: #fb7185;
+  --border: #252c39;
+  --input: #252c39;
+  --ring: #3b82f6;
+  --chart-1: #60a5fa;
+  --chart-2: #a78bfa;
+  --chart-3: #2dd4bf;
+  --chart-4: #fbbf24;
+  --chart-5: #fb7185;
+  --sidebar: #0c1017;
+  --sidebar-foreground: #f4f6fa;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #141a25;
+  --sidebar-accent-foreground: #f4f6fa;
+  --sidebar-border: #252c39;
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -127,4 +129,16 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Fondo negro degradado (tema oscuro), con un tenue brillo azul arriba. */
+.dark body {
+  background:
+    radial-gradient(
+      1200px 600px at 75% -10%,
+      rgba(59, 130, 246, 0.07),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #0d1220 0%, #090c12 45%, #05070a 100%);
+  background-attachment: fixed;
 }

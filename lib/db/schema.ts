@@ -5,6 +5,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uuid,
@@ -15,7 +16,7 @@ import {
 // Enums
 // ============================================================
 
-export const userRoleEnum = pgEnum('user_role', ['user', 'it'])
+export const userRoleEnum = pgEnum('user_role', ['user', 'it', 'admin'])
 
 export const ticketStatusEnum = pgEnum('ticket_status', [
   'open',
@@ -35,10 +36,13 @@ export const ticketCategoryEnum = pgEnum('ticket_category', [
   'hardware',
   'software',
   'network',
-  'access',
+  'access', // etiqueta visible: "Credenciales"
   'other',
   'goodteam',
   'compras',
+  'entorno',
+  'zazu',
+  'cyscap',
 ])
 
 // ============================================================
@@ -104,6 +108,9 @@ export const tickets = pgTable(
   'tickets',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    // Folio secuencial legible. Junto con la categoría forma el código
+    // que ve el usuario: Hardware #83 → HDW-0083 (ver formatTicketCode).
+    number: serial('number').notNull(),
     title: varchar('title', { length: 200 }).notNull(),
     description: text('description').notNull(),
     status: ticketStatusEnum('status').notNull().default('open'),
@@ -304,6 +311,34 @@ export const ticketAssignmentHistory = pgTable(
   }),
 )
 
+// Técnico responsable por categoría. Un ticket nuevo de esa categoría se
+// asigna automáticamente a ese técnico y se le avisa por correo.
+// (Una categoría → un responsable. Un técnico puede tener varias categorías.)
+export const categoryAssignments = pgTable('category_assignments', {
+  category: ticketCategoryEnum('category').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
+// Metadatos editables de las categorías (nombre, color, prefijo, activa).
+// La categoría en sí sigue viviendo en el enum ticket_category (para no tocar
+// la columna tickets.category). Esta tabla permite editarlas y activarlas/
+// desactivarlas; al agregar una nueva, se hace ALTER TYPE ADD VALUE + fila aquí.
+export const categoriesMeta = pgTable('categories_meta', {
+  key: ticketCategoryEnum('key').primaryKey(),
+  label: varchar('label', { length: 60 }).notNull(),
+  color: varchar('color', { length: 9 }).notNull(),
+  prefix: varchar('prefix', { length: 6 }).notNull(),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+})
+
 // ============================================================
 // Tipos inferidos — útiles en Server Actions, validaciones, etc.
 // ============================================================
@@ -324,5 +359,13 @@ export type NewTicketComment = typeof ticketComments.$inferInsert
 export type TicketStatusHistory = typeof ticketStatusHistory.$inferSelect
 export type NewTicketStatusHistory = typeof ticketStatusHistory.$inferInsert
 
+export type TicketAssignmentHistory =
+  typeof ticketAssignmentHistory.$inferSelect
+export type NewTicketAssignmentHistory =
+  typeof ticketAssignmentHistory.$inferInsert
+
 export type TicketAttachment = typeof ticketAttachments.$inferSelect
 export type NewTicketAttachment = typeof ticketAttachments.$inferInsert
+
+export type CategoryAssignment = typeof categoryAssignments.$inferSelect
+export type CategoryMeta = typeof categoriesMeta.$inferSelect

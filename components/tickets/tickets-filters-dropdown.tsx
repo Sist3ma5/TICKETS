@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Check, Filter } from 'lucide-react'
+import { Check, Filter, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -11,14 +11,15 @@ import {
 } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '@/lib/constants'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
+  CATEGORY_LABELS,
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+  TICKET_CATEGORIES,
+} from '@/lib/constants'
 import type { TicketCategory, TicketPriority } from '@/lib/db/schema'
-
-const priorityDots: Record<TicketPriority, string> = {
-  low: 'bg-zinc-400',
-  medium: 'bg-amber-500',
-  high: 'bg-red-500',
-}
 
 export function TicketsFiltersDropdown() {
   const router = useRouter()
@@ -68,7 +69,7 @@ export function TicketsFiltersDropdown() {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-64 p-0" align="end">
+      <PopoverContent className="max-h-[70vh] w-64 overflow-y-auto p-0" align="end">
         <div className="p-2">
           <SectionLabel>Ordenar por fecha</SectionLabel>
           <FilterItem
@@ -99,7 +100,7 @@ export function TicketsFiltersDropdown() {
               label={PRIORITY_LABELS[p]}
               isActive={currentPriority === p}
               onClick={() => update({ priority: p })}
-              dotColor={priorityDots[p]}
+              color={PRIORITY_COLORS[p]}
             />
           ))}
         </div>
@@ -114,12 +115,14 @@ export function TicketsFiltersDropdown() {
             isActive={!currentCategory}
             onClick={() => update({ category: null })}
           />
-          {(Object.keys(CATEGORY_LABELS) as TicketCategory[]).map((c) => (
+          {TICKET_CATEGORIES.map((c) => (
             <FilterItem
               key={c}
               label={CATEGORY_LABELS[c]}
               isActive={currentCategory === c}
               onClick={() => update({ category: c })}
+              icon={CATEGORY_ICONS[c]}
+              color={CATEGORY_COLORS[c]}
             />
           ))}
         </div>
@@ -157,10 +160,19 @@ interface FilterItemProps {
   label: string
   isActive: boolean
   onClick: () => void
-  dotColor?: string
+  /** Color (hex) para el punto o para teñir el icono. */
+  color?: string
+  /** Icono opcional (categorías). */
+  icon?: LucideIcon
 }
 
-function FilterItem({ label, isActive, onClick, dotColor }: FilterItemProps) {
+function FilterItem({
+  label,
+  isActive,
+  onClick,
+  color,
+  icon: Icon,
+}: FilterItemProps) {
   return (
     <button
       type="button"
@@ -170,7 +182,14 @@ function FilterItem({ label, isActive, onClick, dotColor }: FilterItemProps) {
         isActive && 'bg-accent/50 font-medium',
       )}
     >
-      {dotColor && <span className={cn('size-1.5 rounded-full', dotColor)} />}
+      {Icon ? (
+        <Icon className="size-4 shrink-0" style={color ? { color } : undefined} />
+      ) : color ? (
+        <span
+          className="size-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      ) : null}
       <span className="flex-1 text-left">{label}</span>
       {isActive && <Check className="size-4 text-muted-foreground" />}
     </button>

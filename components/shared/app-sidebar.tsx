@@ -12,19 +12,30 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import type { User } from '@/lib/db/schema'
-import { BarChart3, Ticket, Tickets } from 'lucide-react'
+import { BarChart3, Shield, Ticket, Tickets } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserMenu } from './user-menu'
-import Image from 'next/image'
 
 const itItems = [
-  { title: 'Stats', href: '/stats', icon: BarChart3 },
+  { title: 'Estadísticas', href: '/stats', icon: BarChart3 },
   { title: 'Tickets', href: '/tickets/all', icon: Tickets },
   { title: 'Mis tickets', href: '/tickets', icon: Ticket },
 ]
 
+const adminItems = [
+  ...itItems,
+  { title: 'Administración', href: '/admin', icon: Shield },
+]
+
 const userItems = [{ title: 'Tickets', href: '/tickets', icon: Ticket }]
+
+function navItems(role: User['role']) {
+  if (role === 'admin') return adminItems
+  if (role === 'it') return itItems
+  return userItems
+}
 
 function getIsActive(pathname: string, href: string): boolean {
   if (href === '/tickets') {
@@ -41,13 +52,29 @@ function getIsActive(pathname: string, href: string): boolean {
 
 export function AppSidebar({ user }: { user: User }) {
   const pathname = usePathname()
-  const items = user.role === 'it' ? itItems : userItems
+  const items = navItems(user.role)
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center justify-center py-2">
-          <Image src='/bail-logo.svg' alt='Logo' width={120} height={40} className="w-full max-w-44 h-auto" />
+        <div className="flex flex-col items-center gap-1 px-2 py-3">
+          {/*
+            El PNG viene en negro sobre fondo blanco opaco. La barra es oscura,
+            así que invertimos (texto negro → blanco) y con `screen` el fondo
+            —ya invertido a negro— se funde y desaparece. El brillo azul le da
+            color de marca.
+          */}
+          <Image
+            src="/logo.png"
+            alt="Bailmex"
+            width={738}
+            height={414}
+            priority
+            className="h-auto w-full max-w-45 mix-blend-screen invert drop-shadow-[0_0_10px_rgba(59,130,246,0.55)]"
+          />
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
+            Soporte interno
+          </p>
         </div>
       </SidebarHeader>
 
@@ -55,18 +82,19 @@ export function AppSidebar({ user }: { user: User }) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={getIsActive(pathname, item.href)}>
-                      <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
+              {items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={getIsActive(pathname, item.href)}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

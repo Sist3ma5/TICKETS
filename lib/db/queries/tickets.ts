@@ -1,16 +1,35 @@
 import { db } from '@/lib/db'
 import {
+  categoryAssignments,
   ticketAssignmentHistory,
+  ticketAttachments,
   ticketComments,
   tickets,
   ticketStatusHistory,
   users,
+  type Ticket,
+  type TicketAssignmentHistory as TicketAssignmentHistoryRow,
   type TicketCategory,
+  type TicketComment as TicketCommentRow,
   type TicketPriority,
   type TicketStatus,
+  type TicketStatusHistory as TicketStatusHistoryRow,
+  type User,
 } from '@/lib/db/schema'
-import { and, asc, count, desc, eq, ilike, type SQL } from 'drizzle-orm'
+import { emptyCategoryCounts } from '@/lib/constants'
+import { and, asc, count, desc, eq, ilike, max, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
+import {
+  DEV_BYPASS_AUTH,
+  getMockAdminUsers,
+  getMockCategoryCounts,
+  getMockITUsers,
+  getMockNextTicketNumber,
+  getMockStatusCounts,
+  getMockTicketById,
+  getMockTickets,
+  type AdminUser,
+} from '@/lib/dev-mock'
 import 'server-only'
 
 export interface TicketFilters {
@@ -46,6 +65,9 @@ function buildBaseConditions(
 }
 
 export async function getTickets(filters: TicketFilters) {
+  // ⚠️ Solo desarrollo/visual: datos de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockTickets(filters)
+
   const conditions = buildBaseConditions(filters)
   if (filters.status) {
     conditions.push(eq(tickets.status, filters.status))
@@ -67,6 +89,9 @@ export async function getTickets(filters: TicketFilters) {
 export async function getStatusCounts(
   filters: Omit<TicketFilters, 'status' | 'sort'>,
 ) {
+  // ⚠️ Solo desarrollo/visual: conteos de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockStatusCounts(filters)
+
   const conditions = buildBaseConditions(filters)
 
   const result = await db
@@ -95,14 +120,47 @@ export async function getStatusCounts(
   return counts
 }
 
+/** Siguiente folio disponible — se muestra como "ID automático" al crear. */
+export async function getNextTicketNumber(): Promise<number> {
+  // ⚠️ Solo desarrollo/visual: siguiente folio de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockNextTicketNumber()
+
+  const [row] = await db.select({ value: max(tickets.number) }).from(tickets)
+  return (row?.value ?? 0) + 1
+}
+
+/** Conteo de tickets por categoría — alimenta la sección del sidebar. */
+export async function getCategoryCounts(): Promise<
+  Record<TicketCategory, number>
+> {
+  // ⚠️ Solo desarrollo/visual: conteos de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockCategoryCounts()
+
+  const result = await db
+    .select({ category: tickets.category, count: count() })
+    .from(tickets)
+    .groupBy(tickets.category)
+
+  const counts = emptyCategoryCounts()
+
+  for (const row of result) {
+    counts[row.category] = Number(row.count)
+  }
+
+  return counts
+}
+
 export async function getTicketById(id: string) {
+  // ⚠️ Solo desarrollo/visual: detalle de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockTicketById(id)
+
   const creator = alias(users, 'creator')
   const assignee = alias(users, 'assignee')
   const changedByUser = alias(users, 'changed_by')
   const fromUser = alias(users, 'from_user')
   const toUser = alias(users, 'to_user')
 
-  const [ticketRow, comments, statusHistory, assignmentHistory] =
+  const [ticketRow, comments, statusHistory, assignmentHistory, attachments] =
     await Promise.all([
       // Ticket + personas
       db
@@ -189,6 +247,19 @@ export async function getTicketById(id: string) {
         .leftJoin(toUser, eq(ticketAssignmentHistory.toUserId, toUser.id))
         .where(eq(ticketAssignmentHistory.ticketId, id))
         .orderBy(asc(ticketAssignmentHistory.createdAt)),
+
+      // Archivos adjuntos
+      db
+        .select({
+          id: ticketAttachments.id,
+          fileName: ticketAttachments.fileName,
+          fileSize: ticketAttachments.fileSize,
+          mimeType: ticketAttachments.mimeType,
+          url: ticketAttachments.url,
+        })
+        .from(ticketAttachments)
+        .where(eq(ticketAttachments.ticketId, id))
+        .orderBy(asc(ticketAttachments.createdAt)),
     ])
 
   if (!ticketRow) return null
@@ -198,10 +269,71 @@ export async function getTicketById(id: string) {
     comments,
     statusHistory,
     assignmentHistory,
+    attachments,
   }
 }
 
+/**
+ * Técnico responsable de una categoría — a quien se auto-asigna y notifica
+ * un ticket nuevo de esa categoría.
+ *
+ * TODO(BD): resolver desde la tabla `user_categories` (categoría ↔ técnico).
+ * Por ahora devuelve null (no hay tabla), así el flujo queda cableado sin
+ * enviar correos hasta que exista la asignación en base de datos.
+ */
+export async function getTechnicianForCategory(
+  category: TicketCategory,
+): Promise<{ id: string; name: string | null; email: string } | null> {
+  if (DEV_BYPASS_AUTH) return null
+
+  const [row] = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(categoryAssignments)
+    .innerJoin(users, eq(categoryAssignments.userId, users.id))
+    .where(eq(categoryAssignments.category, category))
+    .limit(1)
+
+  return row ?? null
+}
+
+/** Todos los usuarios con su rol — para el panel de administración. */
+export async function getAllUsersForAdmin(): Promise<AdminUser[]> {
+  // ⚠️ Solo desarrollo/visual: usuarios de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockAdminUsers()
+
+  const [rows, assigns] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(asc(users.name)),
+    db
+      .select({
+        category: categoryAssignments.category,
+        userId: categoryAssignments.userId,
+      })
+      .from(categoryAssignments),
+  ])
+
+  // Categorías que atiende cada técnico (una categoría → un responsable).
+  const byUser = new Map<string, TicketCategory[]>()
+  for (const a of assigns) {
+    const arr = byUser.get(a.userId) ?? []
+    arr.push(a.category)
+    byUser.set(a.userId, arr)
+  }
+
+  return rows.map((u) => ({ ...u, categories: byUser.get(u.id) ?? [] }))
+}
+
 export async function getITUsers() {
+  // ⚠️ Solo desarrollo/visual: ingenieros de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockITUsers()
+
   return db
     .select({
       id: users.id,
@@ -213,12 +345,50 @@ export async function getITUsers() {
     .orderBy(asc(users.name))
 }
 
-export type ITUser = Awaited<ReturnType<typeof getITUsers>>[number]
-export type TicketDetails = NonNullable<
-  Awaited<ReturnType<typeof getTicketById>>
->
-export type TicketComment = TicketDetails['comments'][number]
-export type TicketStatusHistoryItem = TicketDetails['statusHistory'][number]
-export type TicketAssignmentHistoryItem =
-  TicketDetails['assignmentHistory'][number]
-export type TicketWithUsers = Awaited<ReturnType<typeof getTickets>>[number]
+// Tipos definidos explícitamente a partir del esquema (no del retorno de las
+// funciones) para evitar ciclos de tipos con los datos de ejemplo de desarrollo.
+
+/** Referencia mínima a un usuario, tal como la seleccionan los joins. */
+type UserRef = Pick<User, 'id' | 'name' | 'email'>
+
+export type ITUser = UserRef
+
+export type TicketWithUsers = Ticket & {
+  createdBy: User
+  assignedTo: User | null
+}
+
+export type TicketComment = {
+  comment: TicketCommentRow
+  author: Pick<User, 'id' | 'name' | 'email' | 'role'>
+}
+
+export type TicketStatusHistoryItem = {
+  entry: TicketStatusHistoryRow
+  changedBy: UserRef
+}
+
+export type TicketAssignmentHistoryItem = {
+  entry: TicketAssignmentHistoryRow
+  changedBy: UserRef
+  fromUser: UserRef | null
+  toUser: UserRef | null
+}
+
+export type TicketAttachmentItem = {
+  id: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  url: string
+}
+
+export type TicketDetails = {
+  ticket: Ticket
+  creator: UserRef
+  assignee: UserRef | null
+  comments: TicketComment[]
+  statusHistory: TicketStatusHistoryItem[]
+  assignmentHistory: TicketAssignmentHistoryItem[]
+  attachments: TicketAttachmentItem[]
+}

@@ -1,9 +1,10 @@
 import 'server-only'
 
 import { NewCommentEmail } from '@/emails/new-comment'
+import { NewTicketEmail } from '@/emails/new-ticket'
 import { StatusChangeEmail } from '@/emails/status-change'
-import { STATUS_LABELS } from '@/lib/constants'
-import type { TicketStatus } from '@/lib/db/schema'
+import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '@/lib/constants'
+import type { TicketCategory, TicketPriority, TicketStatus } from '@/lib/db/schema'
 
 import { APP_URL } from './client'
 import { sendEmail } from './send'
@@ -33,6 +34,39 @@ export async function notifyStatusChange(args: {
       fromStatus: STATUS_LABELS[fromStatus],
       toStatus: STATUS_LABELS[toStatus],
       ticketUrl: `${APP_URL}/tickets`,
+    }),
+  })
+}
+
+/**
+ * Aviso al técnico responsable cuando entra un ticket de su categoría
+ * (mismo mecanismo que notifyStatusChange).
+ */
+export async function notifyNewTicket(args: {
+  ticketId: string
+  ticketTitle: string
+  ticketCode: string
+  category: TicketCategory
+  priority: TicketPriority
+  createdByName: string
+  recipient: Recipient | null
+}) {
+  const { ticketTitle, ticketCode, category, priority, createdByName, recipient } =
+    args
+
+  if (!recipient || !recipient.email) return
+
+  await sendEmail({
+    to: recipient.email,
+    subject: `Nuevo ticket ${ticketCode}: ${ticketTitle}`,
+    react: NewTicketEmail({
+      recipientName: recipient.name ?? recipient.email,
+      ticketTitle,
+      ticketCode,
+      category: CATEGORY_LABELS[category],
+      priority: PRIORITY_LABELS[priority],
+      createdByName,
+      ticketUrl: `${APP_URL}/ticket/${args.ticketId}`,
     }),
   })
 }

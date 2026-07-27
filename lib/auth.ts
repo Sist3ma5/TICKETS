@@ -9,6 +9,7 @@ import { nextCookies } from 'better-auth/next-js'
 
 import { db } from '@/lib/db'
 import { accounts, sessions, users, verifications } from '@/lib/db/schema'
+import { DEV_BYPASS_AUTH, MOCK_USER } from '@/lib/dev-mock'
 
 import type { UserRole } from '@/lib/db/schema'
 
@@ -75,6 +76,11 @@ export const auth = betterAuth({
 // ─── Helpers de sesión ───────────────────────────────────────────
 
 export const getCurrentUser = cache(async () => {
+  // ⚠️ Solo desarrollo/visual: finge un usuario logueado sin BD ni Google.
+  if (DEV_BYPASS_AUTH) {
+    return MOCK_USER
+  }
+
   const session = await auth.api.getSession({
     headers: await headers(),
   })
@@ -96,9 +102,18 @@ export async function requireUser() {
   return user
 }
 
+// El rol 'admin' es superconjunto de 'it': puede entrar a todo lo de IT.
 export async function requireITUser() {
   const user = await requireUser()
-  if (user.role !== 'it') {
+  if (user.role !== 'it' && user.role !== 'admin') {
+    redirect('/tickets')
+  }
+  return user
+}
+
+export async function requireAdminUser() {
+  const user = await requireUser()
+  if (user.role !== 'admin') {
     redirect('/tickets')
   }
   return user

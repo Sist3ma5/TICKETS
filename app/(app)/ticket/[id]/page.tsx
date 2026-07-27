@@ -19,6 +19,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   const canView =
     user.role === 'it' ||
+    user.role === 'admin' ||
     ticket.creator.id === user.id ||
     ticket.assignee?.id === user.id
   if (!canView) notFound()

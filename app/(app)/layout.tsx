@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/shared/app-sidebar'
+import { ThemeToggle } from '@/components/shared/theme-toggle'
 import {
   SidebarInset,
   SidebarProvider,
@@ -23,9 +24,20 @@ export default async function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="bg-transparent">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
+          <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
+            <span className="bg-primary/15 text-primary flex size-8 items-center justify-center rounded-full text-xs font-semibold">
+              {(user.name ?? user.email)
+                .split(' ')
+                .map((p) => p[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase()}
+            </span>
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>

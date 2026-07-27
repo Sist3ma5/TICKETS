@@ -3,6 +3,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/api/auth']
 
 export function proxy(request: NextRequest) {
+  // ⚠️ Solo desarrollo: sin sesión requerida. NUNCA se activa en producción.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    process.env.DEV_BYPASS_AUTH === 'true'
+  ) {
+    return NextResponse.next()
+  }
+
   const { pathname } = request.nextUrl
 
   // Rutas públicas y archivos estáticos pasan siempre

@@ -8,7 +8,7 @@ export default async function ITLayout({
 }) {
   const user = await getCurrentUser()
 
-  if (!user || user.role !== 'it') {
+  if (!user || (user.role !== 'it' && user.role !== 'admin')) {
     redirect('/tickets')
   }
 

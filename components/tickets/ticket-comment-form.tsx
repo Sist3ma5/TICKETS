@@ -1,12 +1,18 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowUp, Loader2 } from 'lucide-react'
+import { Loader2, Paperclip } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
+import {
+  AttachmentList,
+  useAttachments,
+  type PickedAttachment,
+} from '@/components/tickets/attachment-picker'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -17,7 +23,6 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import { addComment } from '@/lib/actions/tickets'
-import { cn } from '@/lib/utils'
 import {
   commentBodySchema,
   type CommentBodyInput,
@@ -30,12 +35,16 @@ interface TicketCommentFormProps {
 export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [attachments, setAttachments] = useState<PickedAttachment[]>([])
+
+  const { hiddenInput, open, removeAt, error, isFull } = useAttachments({
+    value: attachments,
+    onChange: setAttachments,
+  })
 
   const form = useForm<CommentBodyInput>({
     resolver: zodResolver(commentBodySchema),
-    defaultValues: {
-      body: '',
-    },
+    defaultValues: { body: '' },
   })
 
   const body = form.watch('body')
@@ -43,10 +52,7 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
 
   function onSubmit(values: CommentBodyInput) {
     startTransition(async () => {
-      const result = await addComment({
-        ticketId,
-        body: values.body,
-      })
+      const result = await addComment({ ticketId, body: values.body })
 
       if (!result.ok) {
         toast.error(result.message)
@@ -55,56 +61,66 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
 
       toast.success('Comentario agregado')
       form.reset()
+      setAttachments([])
       router.refresh()
     })
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+        {hiddenInput}
+
         <FormField
           control={form.control}
           name="body"
           render={({ field }) => (
             <FormItem>
               <FormControl>
-                <div className="relative">
-                  <Textarea
-                    placeholder="Escribe un comentario..."
-                    rows={3}
-                    className="resize-none pr-12"
-                    disabled={isPending}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        if (canSubmit) form.handleSubmit(onSubmit)()
-                      }
-                    }}
-                    {...field}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    aria-label="Enviar comentario"
-                    className={cn(
-                      'absolute right-2.5 bottom-2.5 flex size-7 items-center justify-center rounded-full transition-colors',
-                      canSubmit
-                        ? 'bg-foreground text-background hover:bg-foreground/85'
-                        : 'bg-muted text-muted-foreground/50',
-                    )}
-                  >
-                    {isPending ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <ArrowUp className="size-4" />
-                    )}
-                  </button>
-                </div>
+                <Textarea
+                  placeholder="Escribe un comentario o actualización..."
+                  rows={3}
+                  className="resize-none"
+                  disabled={isPending}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      if (canSubmit) form.handleSubmit(onSubmit)()
+                    }
+                  }}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        <AttachmentList
+          value={attachments}
+          onRemove={removeAt}
+          disabled={isPending}
+        />
+
+        {error && <p className="text-destructive text-xs">{error}</p>}
+
+        {/* Adjuntar y Comentar, juntos y visibles */}
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={open}
+            disabled={isPending || isFull}
+          >
+            <Paperclip className="size-4" />
+            Adjuntar
+          </Button>
+
+          <Button type="submit" disabled={!canSubmit}>
+            {isPending && <Loader2 className="size-4 animate-spin" />}
+            Comentar
+          </Button>
+        </div>
       </form>
     </Form>
   )

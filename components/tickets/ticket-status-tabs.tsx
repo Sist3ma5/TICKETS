@@ -1,5 +1,6 @@
 'use client'
 
+import { STATUS_COLORS } from '@/lib/constants'
 import type { TicketStatus } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ type StatusFilter = 'all' | TicketStatus
 
 const TABS: { value: StatusFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
-  { value: 'open', label: 'Abiertos' },
+  { value: 'open', label: 'Abierto' },
   { value: 'in_progress', label: 'En progreso' },
   { value: 'waiting_user', label: 'Esperando' },
-  { value: 'resolved', label: 'Resueltos' },
-  { value: 'closed', label: 'Cerrados' },
+  { value: 'resolved', label: 'Resuelto' },
+  { value: 'closed', label: 'Cerrado' },
 ]
 
 interface TicketStatusTabsProps {
@@ -37,7 +38,7 @@ export function TicketStatusTabs({ counts }: TicketStatusTabsProps) {
   }
 
   return (
-    <nav className="flex items-center gap-1 border-b">
+    <nav className="border-border flex flex-wrap items-center gap-x-6 gap-y-1 border-b">
       {TABS.map((tab) => {
         const isActive = activeStatus === tab.value
         return (
@@ -46,18 +47,25 @@ export function TicketStatusTabs({ counts }: TicketStatusTabsProps) {
             href={buildHref(tab.value)}
             scroll={false}
             className={cn(
-              '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+              '-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors',
               isActive
-                ? 'border-foreground text-foreground'
+                ? 'border-primary text-foreground'
                 : 'text-muted-foreground hover:text-foreground border-transparent',
             )}
           >
+            {tab.value !== 'all' && (
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: STATUS_COLORS[tab.value] }}
+                aria-hidden
+              />
+            )}
             {tab.label}
             <span
               className={cn(
-                'rounded px-1.5 py-0.5 text-xs font-medium',
+                'rounded px-1.5 py-0.5 text-[11px] font-semibold',
                 isActive
-                  ? 'bg-foreground/10'
+                  ? 'bg-primary/15 text-primary'
                   : 'bg-muted text-muted-foreground',
               )}
             >

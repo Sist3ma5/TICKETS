@@ -17,13 +17,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { ROLE_LABELS } from '@/lib/constants'
 import { authClient } from '@/lib/auth-client'
+import type { UserRole } from '@/lib/db/schema'
 
 interface UserMenuProps {
   user: {
     name: string | null
     email: string
     image?: string | null
+    role?: UserRole
   }
 }
 
@@ -62,7 +65,7 @@ export function UserMenu({ user }: UserMenuProps) {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
                 <span className="text-muted-foreground truncate text-xs">
-                  {user.email}
+                  {user.role ? ROLE_LABELS[user.role] : user.email}
                 </span>
               </div>
             </SidebarMenuButton>

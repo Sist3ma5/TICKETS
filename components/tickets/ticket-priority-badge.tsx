@@ -1,26 +1,35 @@
-import { Badge } from '@/components/ui/badge'
-import { PRIORITY_LABELS } from '@/lib/constants'
+import { PRIORITY_COLORS, PRIORITY_LABELS } from '@/lib/constants'
 import type { TicketPriority } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
 
-const filledStyles: Record<TicketPriority, string> = {
-  low: 'bg-gray-100 text-gray-800 border-transparent dark:bg-gray-950 dark:text-gray-200',
-  medium:
-    'bg-amber-100 text-amber-800 border-transparent dark:bg-amber-950 dark:text-amber-200',
-  high: 'bg-red-100 text-red-800 border-transparent dark:bg-red-950 dark:text-red-200',
-}
-
 interface TicketPriorityBadgeProps {
   priority: TicketPriority
+  className?: string
 }
 
-export function TicketPriorityBadge({ priority }: TicketPriorityBadgeProps) {
+export function TicketPriorityBadge({
+  priority,
+  className,
+}: TicketPriorityBadgeProps) {
+  const color = PRIORITY_COLORS[priority]
+
   return (
-    <Badge
-      variant="outline"
-      className={cn('font-bold', filledStyles[priority])}
+    <span
+      className={cn(
+        'inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+        className,
+      )}
+      style={{
+        color,
+        backgroundColor: `${color}1f`,
+        borderColor: `${color}40`,
+      }}
     >
+      <span
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+      />
       {PRIORITY_LABELS[priority]}
-    </Badge>
+    </span>
   )
 }

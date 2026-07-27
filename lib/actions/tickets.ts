@@ -1,8 +1,15 @@
 'use server'
 
-import { requireITUser, requireUser } from '@/lib/auth'
+import { requireAdminUser, requireITUser, requireUser } from '@/lib/auth'
+import { formatTicketCode } from '@/lib/constants'
 import { db } from '@/lib/db'
-import type { TicketStatus } from '@/lib/db/schema'
+import { getTechnicianForCategory } from '@/lib/db/queries/tickets'
+import { DEV_BYPASS_AUTH, MOCK_CREATED_TICKET_ID } from '@/lib/dev-mock'
+import type {
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
+} from '@/lib/db/schema'
 import {
   ticketAssignmentHistory,
   ticketComments,
@@ -18,7 +25,11 @@ import { eq, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { after } from 'next/server'
-import { notifyNewComment, notifyStatusChange } from '@/lib/email/notifications'
+import {
+  notifyNewComment,
+  notifyNewTicket,
+  notifyStatusChange,
+} from '@/lib/email/notifications'
 
 type CreateTicketResult =
   | { ok: true; ticketId: string }
@@ -44,6 +55,11 @@ export async function createTicket(
 
   const data = parsed.data
 
+  // ⚠️ Solo desarrollo/visual: no hay BD, simulamos la creación.
+  if (DEV_BYPASS_AUTH) {
+    return { ok: true, ticketId: MOCK_CREATED_TICKET_ID }
+  }
+
   try {
     const [newTicket] = await db
       .insert(tickets)
@@ -54,7 +70,7 @@ export async function createTicket(
         category: data.category,
         createdById: user.id,
       })
-      .returning({ id: tickets.id })
+      .returning({ id: tickets.id, number: tickets.number })
 
     try {
       await db.insert(ticketStatusHistory).values({
@@ -70,10 +86,33 @@ export async function createTicket(
       )
     }
 
-    // 5. TODO: notificar a IT por email
-    // await notifyNewTicket({ ticketId: newTicket.id, createdBy: user })
+    // Enrutamiento por categoría: se asigna al técnico responsable y se le
+    // avisa por correo (best-effort, después de responder al usuario).
+    after(async () => {
+      try {
+        const tech = await getTechnicianForCategory(data.category)
+        if (!tech) return
 
-    // 6. Invalidar las páginas que listan tickets
+        await db
+          .update(tickets)
+          .set({ assignedToId: tech.id })
+          .where(eq(tickets.id, newTicket.id))
+
+        await notifyNewTicket({
+          ticketId: newTicket.id,
+          ticketTitle: data.title,
+          ticketCode: formatTicketCode(data.category, newTicket.number),
+          category: data.category,
+          priority: data.priority,
+          createdByName: user.name ?? user.email,
+          recipient: { email: tech.email, name: tech.name },
+        })
+      } catch (err) {
+        console.error('[email] Error al notificar nuevo ticket:', err)
+      }
+    })
+
+    // Invalidar las páginas que listan tickets
     revalidatePath('/tickets')
     revalidatePath('/tickets/all')
 
@@ -103,6 +142,11 @@ export async function addComment(input: { ticketId: string; body: string }) {
 
   const { ticketId, body } = parsed.data
 
+  // ⚠️ Solo desarrollo/visual: no hay BD, simulamos el comentario.
+  if (DEV_BYPASS_AUTH) {
+    return { ok: true as const }
+  }
+
   const [ticket] = await db
     .select({
       title: tickets.title,
@@ -119,6 +163,7 @@ export async function addComment(input: { ticketId: string; body: string }) {
 
   const canComment =
     user.role === 'it' ||
+    user.role === 'admin' ||
     ticket.createdById === user.id ||
     ticket.assignedToId === user.id
 
@@ -175,15 +220,30 @@ export async function updateTicketDetails(input: {
   ticketId: string
   status?: TicketStatus
   assignedToId?: string | null
+  category?: TicketCategory
+  priority?: TicketPriority
 }) {
   const user = await requireITUser()
-  const { ticketId, status: newStatus, assignedToId: newAssignedToId } = input
+  const {
+    ticketId,
+    status: newStatus,
+    assignedToId: newAssignedToId,
+    category: newCategory,
+    priority: newPriority,
+  } = input
+
+  // ⚠️ Solo desarrollo/visual: no hay BD, simulamos la actualización.
+  if (DEV_BYPASS_AUTH) {
+    return { ok: true as const }
+  }
 
   // Estado actual del ticket
   const [current] = await db
     .select({
       status: tickets.status,
       assignedToId: tickets.assignedToId,
+      category: tickets.category,
+      priority: tickets.priority,
       closedAt: tickets.closedAt,
       createdById: tickets.createdById, // ← para notificar al creador
       title: tickets.title, // ← para el asunto del correo
@@ -207,8 +267,17 @@ export async function updateTicketDetails(input: {
   const statusChanged = newStatus !== undefined && newStatus !== current.status
   const assignmentChanged =
     newAssignedToId !== undefined && newAssignedToId !== current.assignedToId
+  const categoryChanged =
+    newCategory !== undefined && newCategory !== current.category
+  const priorityChanged =
+    newPriority !== undefined && newPriority !== current.priority
 
-  if (!statusChanged && !assignmentChanged) {
+  if (
+    !statusChanged &&
+    !assignmentChanged &&
+    !categoryChanged &&
+    !priorityChanged
+  ) {
     return { ok: true as const } // Nada cambió
   }
 
@@ -216,9 +285,19 @@ export async function updateTicketDetails(input: {
   const updates: Partial<{
     status: TicketStatus
     assignedToId: string | null
+    category: TicketCategory
+    priority: TicketPriority
     resolvedAt: Date | null
     closedAt: Date | null
   }> = {}
+
+  if (categoryChanged) {
+    updates.category = newCategory!
+  }
+
+  if (priorityChanged) {
+    updates.priority = newPriority!
+  }
 
   if (statusChanged) {
     updates.status = newStatus!
@@ -298,7 +377,13 @@ export async function updateTicketDetails(input: {
 }
 
 export async function deleteTicket(ticketId: string) {
-  await requireITUser()
+  // Solo el rol Admin puede borrar tickets.
+  await requireAdminUser()
+
+  // ⚠️ Solo desarrollo/visual: no hay BD, simulamos el borrado.
+  if (DEV_BYPASS_AUTH) {
+    return { ok: true as const }
+  }
 
   const [ticket] = await db
     .select({ id: tickets.id, closedAt: tickets.closedAt })

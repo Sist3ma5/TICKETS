@@ -2,10 +2,12 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import Link from 'next/link'
 
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { CATEGORY_LABELS } from '@/lib/constants'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_ICONS,
+  CATEGORY_LABELS,
+  formatTicketCode,
+} from '@/lib/constants'
 import type { TicketWithUsers } from '@/lib/db/queries/tickets'
 import { TicketPriorityBadge } from './ticket-priority-badge'
 import { TicketStatusBadge } from './ticket-status-badge'
@@ -15,8 +17,11 @@ interface TicketCardProps {
 }
 
 export function TicketCard({ ticket }: TicketCardProps) {
+  const color = CATEGORY_COLORS[ticket.category]
+  const Icon = CATEGORY_ICONS[ticket.category]
+
   return (
-    <Card className="hover:bg-muted/30 focus-within:ring-ring relative transition-colors focus-within:ring-2">
+    <article className="group bg-card border-border hover:border-muted-foreground/40 relative flex min-h-[300px] flex-col rounded-[13px] border p-5 shadow-sm transition-colors dark:bg-gradient-to-br dark:from-[#111720] dark:to-[#0d121a]">
       <Link
         href={`/ticket/${ticket.id}`}
         className="absolute inset-0 z-10 rounded-[inherit]"
@@ -25,47 +30,69 @@ export function TicketCard({ ticket }: TicketCardProps) {
         <span className="sr-only">Ver ticket</span>
       </Link>
 
-      <CardContent className="space-y-3 p-5">
-        <h3 className="line-clamp-2 min-h-[2lh] text-base leading-tight font-bold">
-          {ticket.title}
-        </h3>
+      {/* Folio con el color de su categoría */}
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[11px] font-semibold tracking-wider"
+          style={{
+            color,
+            backgroundColor: `${color}18`,
+            borderColor: `${color}33`,
+          }}
+        >
+          <Icon className="size-3.5 shrink-0" aria-hidden />
+          {formatTicketCode(ticket.category, ticket.number)}
+        </span>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <TicketStatusBadge status={ticket.status} />
-          <TicketPriorityBadge priority={ticket.priority} />
-        </div>
+      <h3 className="mb-2 line-clamp-2 text-lg leading-snug font-semibold">
+        {ticket.title}
+      </h3>
 
-        <p className="text-muted-foreground line-clamp-3 min-h-[3lh] text-sm">
-          {ticket.description}
-        </p>
+      <p className="text-muted-foreground mb-4 line-clamp-2 text-sm leading-relaxed">
+        {ticket.description}
+      </p>
 
-        <Separator />
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <TicketStatusBadge status={ticket.status} />
+        <TicketPriorityBadge priority={ticket.priority} />
+      </div>
 
-        <div className="space-y-1.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 text-[10px] tracking-wider uppercase opacity-60">
+      {/* Empuja el bloque inferior al fondo de la tarjeta */}
+      <div className="mt-auto space-y-4">
+        <div className="border-border grid grid-cols-2 gap-4 border-t pt-4">
+          <div className="min-w-0">
+            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wider uppercase">
               Reporta
-            </span>
-            <span className="text-muted-foreground truncate">
+            </p>
+            <p className="truncate text-sm">
               {ticket.createdBy.name ?? ticket.createdBy.email}
-            </span>
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 text-[10px] tracking-wider uppercase opacity-60">
+          <div className="min-w-0">
+            <p className="text-muted-foreground mb-1 text-[10px] font-semibold tracking-wider uppercase">
               Atiende
-            </span>
-            <span className="text-muted-foreground truncate">
+            </p>
+            <p className="truncate text-sm">
               {ticket.assignedTo ? (
                 (ticket.assignedTo.name ?? ticket.assignedTo.email)
               ) : (
-                <span className="italic">Sin asignar</span>
+                <span className="text-muted-foreground italic">
+                  Sin asignar
+                </span>
               )}
-            </span>
+            </p>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-xs">
-          <Badge>{CATEGORY_LABELS[ticket.category]}</Badge>
+          <span className="text-muted-foreground inline-flex items-center gap-1.5">
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: color }}
+            />
+            {CATEGORY_LABELS[ticket.category]}
+          </span>
           <span className="text-muted-foreground" suppressHydrationWarning>
             {formatDistanceToNow(ticket.createdAt, {
               addSuffix: true,
@@ -73,7 +100,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
             })}
           </span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   )
 }
