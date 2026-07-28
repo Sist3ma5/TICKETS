@@ -49,7 +49,8 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
   })
 
   const body = form.watch('body')
-  const canSubmit = !!body?.trim() && !isPending
+  // Basta con texto O con adjuntos: se puede mandar solo una imagen.
+  const canSubmit = (!!body?.trim() || attachments.length > 0) && !isPending
 
   function onSubmit(values: CommentBodyInput) {
     startTransition(async () => {

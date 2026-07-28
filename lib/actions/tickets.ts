@@ -156,7 +156,8 @@ export async function addComment(input: {
   const parsed = z
     .object({
       ticketId: z.string().uuid(),
-      body: z.string().trim().min(1).max(2000),
+      // Puede ir vacío si el comentario trae adjuntos (se valida abajo).
+      body: z.string().trim().max(2000),
     })
     .safeParse(input)
 
@@ -168,6 +169,14 @@ export async function addComment(input: {
   const attachments = input.attachments ?? []
   const attErr = validateAttachments(attachments)
   if (attErr) return { ok: false as const, message: attErr }
+
+  // Un comentario vacío solo se acepta si trae al menos un adjunto.
+  if (!body && attachments.length === 0) {
+    return {
+      ok: false as const,
+      message: 'Escribe un comentario o adjunta un archivo',
+    }
+  }
 
   // ⚠️ Solo desarrollo/visual: no hay BD, simulamos el comentario.
   if (DEV_BYPASS_AUTH) {
@@ -244,7 +253,12 @@ export async function addComment(input: {
       await notifyNewComment({
         ticketId,
         ticketTitle: ticket.title,
-        commentBody: body,
+        // Si solo mandaron archivos, el correo lo dice en vez de ir vacío.
+        commentBody:
+          body ||
+          (attachments.length === 1
+            ? 'Adjuntó 1 archivo.'
+            : `Adjuntó ${attachments.length} archivos.`),
         authorName: user.name ?? user.email,
         recipients,
       })

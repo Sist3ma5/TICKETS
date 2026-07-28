@@ -33,12 +33,11 @@ export const createTicketSchema = z.object({
   ),
 })
 
+// El texto puede ir vacío: se permite comentar solo con adjuntos (por
+// ejemplo mandar nada más una captura). Que haya texto O archivo se valida
+// en el formulario y otra vez en la Server Action.
 export const commentBodySchema = z.object({
-  body: z
-    .string()
-    .trim()
-    .min(1, 'El comentario no puede estar vacío')
-    .max(2000, 'Máximo 2000 caracteres'),
+  body: z.string().trim().max(2000, 'Máximo 2000 caracteres'),
 })
 
 export type CreateTicketInput = z.infer<typeof createTicketSchema>

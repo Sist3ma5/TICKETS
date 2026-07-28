@@ -4,7 +4,7 @@ import { format, formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns
 import { es } from 'date-fns/locale'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -360,9 +360,12 @@ export function TicketInteractiveSection({
                         })}
                       </span>
                     </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-words">
-                      {comment.body}
-                    </p>
+                    {/* Un comentario de solo adjuntos no lleva texto. */}
+                    {comment.body && (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-words">
+                        {comment.body}
+                      </p>
+                    )}
                     <AttachmentView
                       items={attachments.filter(
                         (a) => a.commentId === comment.id,
