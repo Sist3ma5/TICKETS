@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import {
   AttachmentDropzone,
+  attachmentsToUpload,
   type PickedAttachment,
 } from '@/components/tickets/attachment-picker'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,8 @@ export function NewTicketForm({
 
   function onSubmit(values: CreateTicketInput) {
     startTransition(async () => {
-      const result = await createTicket(values)
+      const files = await attachmentsToUpload(attachments)
+      const result = await createTicket({ ...values, attachments: files })
 
       if (!result.ok) {
         toast.error(result.message)

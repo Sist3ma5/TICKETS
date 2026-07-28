@@ -1,5 +1,10 @@
 'use server'
 
+import {
+  saveAttachments,
+  validateAttachments,
+  type AttachmentInput,
+} from '@/lib/attachments'
 import { requireAdminUser, requireITUser, requireUser } from '@/lib/auth'
 import { formatTicketCode } from '@/lib/constants'
 import { db } from '@/lib/db'
@@ -40,7 +45,7 @@ type CreateTicketResult =
     }
 
 export async function createTicket(
-  input: CreateTicketInput,
+  input: CreateTicketInput & { attachments?: AttachmentInput[] },
 ): Promise<CreateTicketResult> {
   const user = await requireUser()
 
@@ -54,6 +59,9 @@ export async function createTicket(
   }
 
   const data = parsed.data
+  const attachments = input.attachments ?? []
+  const attErr = validateAttachments(attachments)
+  if (attErr) return { ok: false, message: attErr }
 
   // ⚠️ Solo desarrollo/visual: no hay BD, simulamos la creación.
   if (DEV_BYPASS_AUTH) {
@@ -84,6 +92,18 @@ export async function createTicket(
         'No se pudo registrar el historial inicial del ticket:',
         historyErr,
       )
+    }
+
+    // Adjuntos del ticket (best-effort: el ticket ya existe).
+    try {
+      await saveAttachments({
+        ticketId: newTicket.id,
+        commentId: null,
+        uploadedById: user.id,
+        items: attachments,
+      })
+    } catch (attErr2) {
+      console.error('No se pudieron guardar los adjuntos del ticket:', attErr2)
     }
 
     // Enrutamiento por categoría: se asigna al técnico responsable y se le
@@ -126,7 +146,11 @@ export async function createTicket(
   }
 }
 
-export async function addComment(input: { ticketId: string; body: string }) {
+export async function addComment(input: {
+  ticketId: string
+  body: string
+  attachments?: AttachmentInput[]
+}) {
   const user = await requireUser()
 
   const parsed = z
@@ -141,6 +165,9 @@ export async function addComment(input: { ticketId: string; body: string }) {
   }
 
   const { ticketId, body } = parsed.data
+  const attachments = input.attachments ?? []
+  const attErr = validateAttachments(attachments)
+  if (attErr) return { ok: false as const, message: attErr }
 
   // ⚠️ Solo desarrollo/visual: no hay BD, simulamos el comentario.
   if (DEV_BYPASS_AUTH) {
@@ -172,15 +199,28 @@ export async function addComment(input: { ticketId: string; body: string }) {
   }
 
   // Insert del comentario — esto SÍ es crítico
+  let commentId: string
   try {
-    await db.insert(ticketComments).values({
-      ticketId,
-      authorId: user.id,
-      body,
-    })
+    const [row] = await db
+      .insert(ticketComments)
+      .values({ ticketId, authorId: user.id, body })
+      .returning({ id: ticketComments.id })
+    commentId = row.id
   } catch (err) {
     console.error('Error agregando comentario:', err)
     return { ok: false as const, message: 'No se pudo agregar el comentario' }
+  }
+
+  // Adjuntos del comentario (best-effort: el comentario ya existe).
+  try {
+    await saveAttachments({
+      ticketId,
+      commentId,
+      uploadedById: user.id,
+      items: attachments,
+    })
+  } catch (attErr2) {
+    console.error('No se pudieron guardar los adjuntos del comentario:', attErr2)
   }
 
   // Email — best-effort, corre DESPUÉS de responder al usuario.

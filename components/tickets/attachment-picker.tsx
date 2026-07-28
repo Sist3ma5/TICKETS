@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Upload, X } from 'lucide-react'
+import { Download, FileText, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -211,6 +211,101 @@ export function AttachmentDropzone({
       {error && <p className="text-destructive text-xs">{error}</p>}
 
       <AttachmentList value={value} onRemove={removeAt} disabled={disabled} />
+    </div>
+  )
+}
+
+// ── Enviar al servidor ──────────────────────────────────────────────────────
+
+/** Convierte un File a base64 (sin el prefijo data:). */
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result)
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+export interface AttachmentUpload {
+  fileName: string
+  mimeType: string
+  fileSize: number
+  data: string
+}
+
+/** Convierte los archivos elegidos al formato que esperan las server actions. */
+export async function attachmentsToUpload(
+  items: PickedAttachment[],
+): Promise<AttachmentUpload[]> {
+  return Promise.all(
+    items.map(async (a) => ({
+      fileName: a.file.name,
+      mimeType: a.file.type || 'application/octet-stream',
+      fileSize: a.file.size,
+      data: await fileToBase64(a.file),
+    })),
+  )
+}
+
+// ── Mostrar adjuntos ya guardados ───────────────────────────────────────────
+
+export interface SavedAttachment {
+  id: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  url: string
+}
+
+/** Muestra adjuntos guardados: imágenes en miniatura, archivos como descarga. */
+export function AttachmentView({
+  items,
+  className,
+}: {
+  items: SavedAttachment[]
+  className?: string
+}) {
+  if (!items.length) return null
+
+  return (
+    <div className={cn('flex flex-wrap gap-2', className)}>
+      {items.map((a) =>
+        a.mimeType.startsWith('image/') ? (
+          <a
+            key={a.id}
+            href={a.url}
+            target="_blank"
+            rel="noreferrer"
+            title={a.fileName}
+            className="block overflow-hidden rounded-md border"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={a.url}
+              alt={a.fileName}
+              className="max-h-44 max-w-55 object-cover"
+            />
+          </a>
+        ) : (
+          <a
+            key={a.id}
+            href={a.url}
+            download={a.fileName}
+            className="bg-muted/40 hover:bg-muted flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors"
+          >
+            <FileText className="text-muted-foreground size-4 shrink-0" />
+            <span className="max-w-45 truncate">{a.fileName}</span>
+            <span className="text-muted-foreground text-[11px]">
+              {formatSize(a.fileSize)}
+            </span>
+            <Download className="text-muted-foreground size-3.5 shrink-0" />
+          </a>
+        ),
+      )}
     </div>
   )
 }

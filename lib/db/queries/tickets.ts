@@ -255,7 +255,7 @@ export async function getTicketById(id: string) {
           fileName: ticketAttachments.fileName,
           fileSize: ticketAttachments.fileSize,
           mimeType: ticketAttachments.mimeType,
-          url: ticketAttachments.url,
+          commentId: ticketAttachments.commentId,
         })
         .from(ticketAttachments)
         .where(eq(ticketAttachments.ticketId, id))
@@ -269,7 +269,11 @@ export async function getTicketById(id: string) {
     comments,
     statusHistory,
     assignmentHistory,
-    attachments,
+    // La URL apunta a nuestra ruta que sirve el archivo desde la BD.
+    attachments: attachments.map((a) => ({
+      ...a,
+      url: `/api/attachments/${a.id}`,
+    })),
   }
 }
 
@@ -381,6 +385,7 @@ export type TicketAttachmentItem = {
   fileSize: number
   mimeType: string
   url: string
+  commentId: string | null
 }
 
 export type TicketDetails = {

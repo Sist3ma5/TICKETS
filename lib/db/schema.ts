@@ -191,9 +191,9 @@ export const ticketStatusHistory = pgTable(
   }),
 )
 
-// Adjuntos: archivos guardados en Vercel Blob.
-// La URL apunta al Blob; `pathname` se guarda para poder borrar
-// desde el SDK de @vercel/blob si en el futuro habilitamos borrado.
+// Adjuntos: el contenido del archivo se guarda en la BD (columna `data`,
+// base64). `commentId` liga el adjunto a un comentario (para verlo en el
+// historial). `url`/`pathname` quedan opcionales (legado de Vercel Blob).
 export const ticketAttachments = pgTable(
   'ticket_attachments',
   {
@@ -201,14 +201,19 @@ export const ticketAttachments = pgTable(
     ticketId: uuid('ticket_id')
       .notNull()
       .references(() => tickets.id, { onDelete: 'cascade' }),
+    commentId: uuid('comment_id').references(() => ticketComments.id, {
+      onDelete: 'cascade',
+    }),
     uploadedById: uuid('uploaded_by_id')
       .notNull()
       .references(() => users.id),
     fileName: text('file_name').notNull(),
     fileSize: integer('file_size').notNull(),
     mimeType: text('mime_type').notNull(),
-    url: text('url').notNull(),
-    pathname: text('pathname').notNull(),
+    // Contenido del archivo en base64.
+    data: text('data'),
+    url: text('url'),
+    pathname: text('pathname'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (a) => ({

@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import {
   AttachmentList,
+  attachmentsToUpload,
   useAttachments,
   type PickedAttachment,
 } from '@/components/tickets/attachment-picker'
@@ -52,7 +53,12 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
 
   function onSubmit(values: CommentBodyInput) {
     startTransition(async () => {
-      const result = await addComment({ ticketId, body: values.body })
+      const files = await attachmentsToUpload(attachments)
+      const result = await addComment({
+        ticketId,
+        body: values.body,
+        attachments: files,
+      })
 
       if (!result.ok) {
         toast.error(result.message)

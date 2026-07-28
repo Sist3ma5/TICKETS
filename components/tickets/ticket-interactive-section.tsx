@@ -2,7 +2,7 @@
 
 import { format, formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Download, FileText, ImageIcon, Loader2, Trash2 } from 'lucide-react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -33,7 +33,7 @@ import {
   TicketActivityItem,
   type ActivityItem,
 } from '@/components/tickets/ticket-activity-item'
-import { formatSize } from '@/components/tickets/attachment-picker'
+import { AttachmentView } from '@/components/tickets/attachment-picker'
 import { TicketCategoryBadge } from '@/components/tickets/ticket-category-badge'
 import { TicketCommentForm } from '@/components/tickets/ticket-comment-form'
 import { TicketPriorityBadge } from '@/components/tickets/ticket-priority-badge'
@@ -103,6 +103,10 @@ export function TicketInteractiveSection({
   const canEdit = isStaff && !ticket.closedAt
   // El borrado es exclusivo del rol Admin.
   const canDelete = currentUserRole === 'admin' && !ticket.closedAt
+
+  // Adjuntos del ticket (sin comentario). Los de comentarios se muestran
+  // dentro de cada comentario en la Actividad.
+  const ticketFiles = attachments.filter((a) => !a.commentId)
 
   /** Guarda al instante cualquier cambio de los selects. */
   function save(
@@ -291,53 +295,22 @@ export function TicketInteractiveSection({
         </Field>
       </section>
 
-      {/* Archivos adjuntos */}
+      {/* Archivos adjuntos del ticket (los de comentarios se ven en Actividad) */}
       <Separator />
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase">
           <span className="text-muted-foreground">Archivos adjuntos</span>
           <Badge variant="secondary" className="text-[10px]">
-            {attachments.length}
+            {ticketFiles.length}
           </Badge>
         </h2>
 
-        {attachments.length === 0 ? (
+        {ticketFiles.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
             Sin archivos adjuntos.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {attachments.map((file) => (
-              <li
-                key={file.id}
-                className="bg-muted/30 flex items-center gap-3 rounded-md border p-3"
-              >
-                <div className="text-muted-foreground shrink-0">
-                  {file.mimeType.startsWith('image/') ? (
-                    <ImageIcon className="size-5" />
-                  ) : (
-                    <FileText className="size-5" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {file.fileName}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatSize(file.fileSize)}
-                  </p>
-                </div>
-                <a
-                  href={file.url}
-                  download={file.fileName}
-                  aria-label={`Descargar ${file.fileName}`}
-                  className="text-muted-foreground hover:text-foreground rounded p-1.5 transition-colors"
-                >
-                  <Download className="size-4" />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <AttachmentView items={ticketFiles} />
         )}
       </section>
 
@@ -390,6 +363,11 @@ export function TicketInteractiveSection({
                     <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-words">
                       {comment.body}
                     </p>
+                    <AttachmentView
+                      items={attachments.filter(
+                        (a) => a.commentId === comment.id,
+                      )}
+                    />
                   </div>
                 )
               }
