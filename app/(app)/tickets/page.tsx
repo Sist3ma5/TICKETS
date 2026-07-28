@@ -36,8 +36,12 @@ export default async function MyTicketsPage({ searchParams }: PageProps) {
     redirect('/login')
   }
 
+  // Para quien atiende tickets (IT y admins), "Mis tickets" son los que tiene
+  // asignados. Para todos los demás, los que ellos levantaron.
   const baseFilter =
-    user.role === 'it' ? { assignedToId: user.id } : { createdById: user.id }
+    user.role === 'it' || user.role === 'admin'
+      ? { assignedToId: user.id }
+      : { createdById: user.id }
 
   const [visibleTickets, statusCounts]: [TicketWithUsers[], typeof Promise.all extends never ? never : Record<string, number>] = await Promise.all([
     getTickets({

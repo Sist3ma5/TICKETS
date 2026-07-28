@@ -17,7 +17,17 @@ import {
   type User,
 } from '@/lib/db/schema'
 import { emptyCategoryCounts } from '@/lib/constants'
-import { and, asc, count, desc, eq, ilike, max, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  max,
+  type SQL,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import {
   DEV_BYPASS_AUTH,
@@ -334,6 +344,11 @@ export async function getAllUsersForAdmin(): Promise<AdminUser[]> {
   return rows.map((u) => ({ ...u, categories: byUser.get(u.id) ?? [] }))
 }
 
+/**
+ * Personas a las que se les puede asignar un ticket: IT y administradores.
+ * Los admins también atienden tickets, así que aparecen en el selector
+ * "Atiende" y en el enrutamiento por categoría.
+ */
 export async function getITUsers() {
   // ⚠️ Solo desarrollo/visual: ingenieros de ejemplo sin BD.
   if (DEV_BYPASS_AUTH) return getMockITUsers()
@@ -345,7 +360,7 @@ export async function getITUsers() {
       email: users.email,
     })
     .from(users)
-    .where(eq(users.role, 'it'))
+    .where(inArray(users.role, ['it', 'admin']))
     .orderBy(asc(users.name))
 }
 

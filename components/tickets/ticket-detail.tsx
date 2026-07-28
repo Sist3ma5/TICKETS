@@ -18,7 +18,9 @@ export async function TicketDetail({
   ticket,
   currentUserRole,
 }: TicketDetailProps) {
-  const isIT = currentUserRole === 'it'
+  // Los admins también atienden tickets: cargan la lista de asignables igual
+  // que IT, para poder asignarse un ticket a sí mismos.
+  const isIT = currentUserRole === 'it' || currentUserRole === 'admin'
   const itUsers = isIT ? await getITUsers() : []
 
   const timeline: TimelineItem[] = [

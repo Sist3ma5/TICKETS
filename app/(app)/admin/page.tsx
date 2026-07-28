@@ -75,7 +75,11 @@ export default async function AdminPage() {
             Define qué técnico recibe automáticamente los tickets de cada
             categoría.
           </p>
-          <CategoryRouting itUsers={users.filter((u) => u.role === 'it')} />
+          <CategoryRouting
+            itUsers={users.filter(
+              (u) => u.role === 'it' || u.role === 'admin',
+            )}
+          />
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-3">

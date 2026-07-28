@@ -64,7 +64,13 @@ export function UsersManager({ users }: { users: AdminUser[] }) {
     setRows((prev) =>
       prev.map((u) =>
         u.id === userId
-          ? { ...u, role, categories: role === 'it' ? u.categories : [] }
+          ? {
+              ...u,
+              role,
+              // IT y admins atienden tickets, así que conservan sus categorías.
+              categories:
+                role === 'it' || role === 'admin' ? u.categories : [],
+            }
           : u,
       ),
     )
@@ -162,7 +168,7 @@ export function UsersManager({ users }: { users: AdminUser[] }) {
               </td>
 
               <td className="px-4 py-3">
-                {u.role === 'it' ? (
+                {u.role === 'it' || u.role === 'admin' ? (
                   <CategoryPicker
                     selected={u.categories}
                     disabled={isPending}
