@@ -4,6 +4,8 @@ import { TicketDetail } from '@/components/tickets/ticket-detail'
 import { getCurrentUser } from '@/lib/auth'
 import { getTicketById } from '@/lib/db/queries/tickets'
 
+export const dynamic = 'force-dynamic'
+
 interface PageProps {
   params: Promise<{ id: string }>
 }

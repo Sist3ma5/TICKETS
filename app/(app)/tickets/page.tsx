@@ -14,6 +14,9 @@ import type {
   TicketPriority,
   TicketStatus,
 } from '@/lib/db/schema'
+import type { TicketWithUsers } from '@/lib/db/queries/tickets'
+
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   searchParams: Promise<{
@@ -36,7 +39,7 @@ export default async function MyTicketsPage({ searchParams }: PageProps) {
   const baseFilter =
     user.role === 'it' ? { assignedToId: user.id } : { createdById: user.id }
 
-  const [visibleTickets, statusCounts] = await Promise.all([
+  const [visibleTickets, statusCounts]: [TicketWithUsers[], typeof Promise.all extends never ? never : Record<string, number>] = await Promise.all([
     getTickets({
       ...baseFilter,
       status: params.status,
@@ -73,7 +76,7 @@ export default async function MyTicketsPage({ searchParams }: PageProps) {
         <TicketsEmptyState hasFilters={hasFilters} pathname="/tickets" />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibleTickets.map((ticket) => (
+          {visibleTickets.map((ticket: TicketWithUsers) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
         </div>

@@ -34,3 +34,32 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+### Vercel setup for this repo
+
+When importing this repository into Vercel:
+
+- **Framework preset:** `Next.js`
+- **Root directory:** `./`
+- **Build command:** leave the default (`next build` / Vercel default)
+- **Output directory:** leave the default
+
+### Environment variables
+
+Add these variables in Vercel before deploying:
+
+- `DATABASE_URL`
+- `DATABASE_URL_UNPOOLED`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `NEXT_PUBLIC_BETTER_AUTH_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+
+Optional:
+
+- `RESEND_API_KEY`
+- `EMAIL_FROM`
+- `BLOB_READ_WRITE_TOKEN`
+
+Do **not** enable `DEV_BYPASS_AUTH` in production.

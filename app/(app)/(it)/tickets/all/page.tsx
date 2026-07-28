@@ -5,11 +5,14 @@ import { TicketsSearch } from '@/components/tickets/tickets-search'
 import { getStatusCounts, getTickets } from '@/lib/db/queries/tickets'
 import { TicketsEmptyState } from '@/components/tickets/tickets-empty-state'
 import { TicketsPageHeader } from '@/components/tickets/tickets-page-header'
+import type { TicketWithUsers } from '@/lib/db/queries/tickets'
 import type {
   TicketCategory,
   TicketPriority,
   TicketStatus,
 } from '@/lib/db/schema'
+
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   searchParams: Promise<{
@@ -24,7 +27,7 @@ interface PageProps {
 export default async function AllTicketsPage({ searchParams }: PageProps) {
   const params = await searchParams
 
-  const [visibleTickets, statusCounts] = await Promise.all([
+  const [visibleTickets, statusCounts]: [TicketWithUsers[], Record<string, number>] = await Promise.all([
     getTickets({
       status: params.status,
       q: params.q,
@@ -57,7 +60,7 @@ export default async function AllTicketsPage({ searchParams }: PageProps) {
         <TicketsEmptyState hasFilters={hasFilters} pathname="/tickets/all" />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibleTickets.map((ticket) => (
+          {visibleTickets.map((ticket: TicketWithUsers) => (
             <TicketCard key={ticket.id} ticket={ticket} />
           ))}
         </div>

@@ -13,6 +13,8 @@ import {
 } from '@/lib/constants'
 import { getAllUsersForAdmin } from '@/lib/db/queries/tickets'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminPage() {
   await requireAdminUser()
 
