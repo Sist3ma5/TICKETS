@@ -261,7 +261,11 @@ export interface SavedAttachment {
   url: string
 }
 
-/** Muestra adjuntos guardados: imágenes en miniatura, archivos como descarga. */
+/**
+ * Muestra adjuntos guardados: imágenes en miniatura, archivos como descarga.
+ * Todo se puede descargar — en las imágenes el botón va encima de la
+ * miniatura, porque el clic en la imagen abre el tamaño completo.
+ */
 export function AttachmentView({
   items,
   className,
@@ -275,21 +279,34 @@ export function AttachmentView({
     <div className={cn('flex flex-wrap gap-2', className)}>
       {items.map((a) =>
         a.mimeType.startsWith('image/') ? (
-          <a
+          <div
             key={a.id}
-            href={a.url}
-            target="_blank"
-            rel="noreferrer"
-            title={a.fileName}
-            className="block overflow-hidden rounded-md border"
+            className="relative overflow-hidden rounded-md border"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={a.url}
-              alt={a.fileName}
-              className="max-h-44 max-w-55 object-cover"
-            />
-          </a>
+            <a
+              href={a.url}
+              target="_blank"
+              rel="noreferrer"
+              title={`Abrir ${a.fileName}`}
+              className="block"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={a.url}
+                alt={a.fileName}
+                className="max-h-44 max-w-55 object-cover"
+              />
+            </a>
+            <a
+              href={a.url}
+              download={a.fileName}
+              title={`Descargar ${a.fileName}`}
+              aria-label={`Descargar ${a.fileName}`}
+              className="absolute top-1.5 right-1.5 rounded-md bg-black/60 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+            >
+              <Download className="size-4" />
+            </a>
+          </div>
         ) : (
           <a
             key={a.id}
