@@ -1,4 +1,10 @@
-import { AlertTriangle, RotateCcw, UserX } from 'lucide-react'
+import {
+  AlertTriangle,
+  RotateCcw,
+  Tag,
+  UserX,
+  type LucideIcon,
+} from 'lucide-react'
 import Link from 'next/link'
 
 import {
@@ -29,9 +35,30 @@ import {
   getWorkloadByTech,
 } from '@/lib/db/queries/stats'
 import { getCategoryCounts, getStatusCounts } from '@/lib/db/queries/tickets'
-import type { TicketPriority, TicketStatus } from '@/lib/db/schema'
+import type {
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
+} from '@/lib/db/schema'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Etiqueta e icono de una categoría que viene de la BD.
+ *
+ * Las categorías de estas consultas salen de la tabla, no del arreglo fijo del
+ * código. Si algún día se agrega un valor al enum sin darlo de alta aquí, un
+ * acceso directo devolvería `undefined` y React tronaría al intentar pintarlo
+ * como componente. Con el respaldo, esa categoría simplemente sale con nombre
+ * genérico en vez de tumbar toda la página.
+ */
+function categoryLabel(category: TicketCategory): string {
+  return CATEGORY_LABELS[category] ?? category
+}
+
+function categoryIcon(category: TicketCategory): LucideIcon {
+  return CATEGORY_ICONS[category] ?? Tag
+}
 
 /** Días con una unidad legible: menos de un día se entiende mejor en horas. */
 function formatDays(days: number): string {
@@ -191,7 +218,7 @@ export default async function StatsPage() {
   const categorySlices: DonutSlice[] = [
     ...topCategories.map((c, i) => ({
       key: c.category,
-      label: CATEGORY_LABELS[c.category],
+      label: categoryLabel(c.category),
       value: c.value,
       color: CATEGORY_SLOTS[i],
     })),
@@ -210,11 +237,11 @@ export default async function StatsPage() {
   // ── Barras ────────────────────────────────────────────────────────────────
   const resolutionRows: BarRow[] = byCategory.map((c) => ({
     key: c.category,
-    label: CATEGORY_LABELS[c.category],
+    label: categoryLabel(c.category),
     value: c.medianDays,
     display: formatDays(c.medianDays),
     hint: `${c.closed} cerrados`,
-    icon: CATEGORY_ICONS[c.category],
+    icon: categoryIcon(c.category),
   }))
 
   const workloadRows: BarRow[] = workload.map((w) => ({
@@ -366,7 +393,7 @@ export default async function StatsPage() {
             </thead>
             <tbody>
               {rankedCategories.map((c) => {
-                const Icon = CATEGORY_ICONS[c.category]
+                const Icon = categoryIcon(c.category)
                 return (
                   <tr key={c.category} className="border-b last:border-0">
                     <td className="py-2">
@@ -375,7 +402,7 @@ export default async function StatsPage() {
                           className="text-muted-foreground size-4 shrink-0"
                           aria-hidden
                         />
-                        {CATEGORY_LABELS[c.category]}
+                        {categoryLabel(c.category)}
                       </span>
                     </td>
                     <td className="py-2 text-right font-semibold tabular-nums">
