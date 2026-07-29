@@ -48,6 +48,45 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Colores de las gráficas de Estadísticas.
+ *
+ * No son los mismos que los de las insignias (CATEGORY_COLORS y compañía):
+ * aquellos son tonos claros pensados para chips y reprueban las pruebas de
+ * contraste y de daltonismo cuando se usan como relleno de una gráfica.
+ * Estos pasos se validaron por separado para cada tema contra la superficie
+ * real de las tarjetas (#ffffff en claro, #0f141d en oscuro).
+ *
+ * - Estado: categórica, en orden fijo (abierto → cerrado).
+ * - Prioridad: es una escala ordenada (baja < media < alta), así que lleva
+ *   una rampa de un solo tono. En oscuro la rampa se invierte: sobre fondo
+ *   oscuro "más" se lee más claro.
+ * - Categoría: categórica, ranuras 1-6 del pastel.
+ */
+:root {
+  --viz-st-open: #2a78d6;
+  --viz-st-progress: #eda100;
+  --viz-st-waiting: #e87ba4;
+  --viz-st-resolved: #008300;
+  --viz-st-closed: #4a3aa7;
+
+  --viz-prio-low: #86b6ef;
+  --viz-prio-medium: #2a78d6;
+  --viz-prio-high: #104281;
+
+  --viz-cat-1: #2a78d6;
+  --viz-cat-2: #eb6834;
+  --viz-cat-3: #1baf7a;
+  --viz-cat-4: #eda100;
+  --viz-cat-5: #e87ba4;
+  --viz-cat-6: #008300;
+
+  /* Barras de magnitud: un solo tono, nunca coloreadas por su valor. */
+  --viz-bar: #2a78d6;
+  /* Reservado para "esto ya es un problema". Siempre con icono y etiqueta. */
+  --viz-critical: #d03b3b;
+}
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -86,6 +125,28 @@
 
 /* Tema oscuro — paleta tomada del prototipo de Bailmex Tickets. */
 .dark {
+  /* Mismos tonos, escalonados para el fondo oscuro (no es un simple invertir). */
+  --viz-st-open: #3987e5;
+  --viz-st-progress: #c98500;
+  --viz-st-waiting: #d55181;
+  --viz-st-resolved: #008300;
+  --viz-st-closed: #9085e9;
+
+  /* Rampa invertida: sobre fondo oscuro, "alta" es el paso más claro. */
+  --viz-prio-low: #184f95;
+  --viz-prio-medium: #3987e5;
+  --viz-prio-high: #86b6ef;
+
+  --viz-cat-1: #3987e5;
+  --viz-cat-2: #d95926;
+  --viz-cat-3: #199e70;
+  --viz-cat-4: #c98500;
+  --viz-cat-5: #d55181;
+  --viz-cat-6: #008300;
+
+  --viz-bar: #3987e5;
+  --viz-critical: #d03b3b;
+
   --background: #090c12;
   --foreground: #f4f6fa;
   --card: #0f141d;
