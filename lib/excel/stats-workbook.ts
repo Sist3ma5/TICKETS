@@ -24,35 +24,87 @@ import {
   getWorkloadByTech,
 } from '@/lib/db/queries/stats'
 import { getCategoryCounts, getStatusCounts } from '@/lib/db/queries/tickets'
-import type { TicketCategory, TicketPriority, TicketStatus } from '@/lib/db/schema'
+import type {
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
+} from '@/lib/db/schema'
 
 import type { ChartSpec } from './charts'
 import { injectCharts } from './inject-charts'
 
-const HEADER_FILL = 'FF1F2937'
+const HEADER_FILL = 'FF1F2937' // gris muy oscuro, como el encabezado de la app
 const HEADER_FONT = 'FFFFFFFF'
+const ZEBRA_FILL = 'FFF6F7F9' // gris casi blanco para las filas alternas
+const BORDER = 'FFD8DCE2'
+/** Azul de marca para las barras que no tienen color propio. */
+const SERIES_COLOR = '#2563EB'
 
-/** Encabezado con estilo, y anchos de columna razonables. */
+const thin: ExcelJS.Border = { style: 'thin', color: { argb: BORDER } }
+const ALL_BORDERS: Partial<ExcelJS.Borders> = {
+  top: thin,
+  left: thin,
+  bottom: thin,
+  right: thin,
+}
+
+/**
+ * Tabla con el mismo estilo en todas las hojas: encabezado oscuro, filas
+ * alternadas, bordes finos, números alineados a la derecha y encabezado fijo
+ * al hacer scroll. Se centraliza aquí para que ninguna hoja se salga del
+ * formato.
+ */
 function addTable(
   sheet: ExcelJS.Worksheet,
   headers: string[],
   rows: (string | number)[][],
   widths: number[],
 ) {
-  const head = sheet.addRow(headers)
-  head.font = { bold: true, color: { argb: HEADER_FONT } }
-  head.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: HEADER_FILL },
-  }
-  head.alignment = { vertical: 'middle' }
-  head.height = 20
+  const startRow = sheet.rowCount + 1
 
-  rows.forEach((r) => sheet.addRow(r))
+  const head = sheet.addRow(headers)
+  head.font = { bold: true, color: { argb: HEADER_FONT }, size: 11 }
+  head.height = 22
+  head.eachCell((cell, col) => {
+    if (col > headers.length) return
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: HEADER_FILL },
+    }
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: col === 1 ? 'left' : 'right',
+    }
+    cell.border = ALL_BORDERS
+  })
+
+  rows.forEach((r, i) => {
+    const row = sheet.addRow(r)
+    row.height = 18
+    row.eachCell((cell, col) => {
+      if (col > headers.length) return
+      cell.border = ALL_BORDERS
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: typeof r[col - 1] === 'number' ? 'right' : 'left',
+      }
+      if (i % 2 === 1) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: ZEBRA_FILL },
+        }
+      }
+    })
+  })
+
   widths.forEach((w, i) => {
     sheet.getColumn(i + 1).width = w
   })
+
+  // Encabezado congelado: en las tablas largas se pierde de vista al bajar.
+  sheet.views = [{ state: 'frozen', ySplit: startRow }]
 }
 
 function formatDays(d: number): string {
@@ -65,7 +117,9 @@ function formatDays(d: number): string {
  * `month` es null). Incluye gráficas nativas de Excel, vinculadas a las
  * celdas: si se editan los datos, la gráfica se actualiza.
  */
-export async function buildStatsWorkbook(month: string | null): Promise<Buffer> {
+export async function buildStatsWorkbook(
+  month: string | null,
+): Promise<Buffer> {
   const periodo = month ? { month } : {}
 
   const [
@@ -98,7 +152,8 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
 
   const periodLabel = month ? formatMonthLabel(month) : 'Todo el histórico'
   const total = statusCounts.all
-  const closeRate = total > 0 ? Math.round((statusCounts.closed / total) * 100) : 0
+  const closeRate =
+    total > 0 ? Math.round((statusCounts.closed / total) * 100) : 0
 
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Bailmex IT Tickets'
@@ -180,14 +235,26 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
     },
   ])
 
-  // ── 4. Por categoría (barras) ───────────────────────────────────────────
+  // ── 4. Por categoría (barras, cada una con su color) ────────────────────
   const categorias = wb.addWorksheet('Por categoría')
-  const catRows = (Object.keys(categoryCounts) as TicketCategory[])
-    .map((k) => [CATEGORY_LABELS[k] ?? k, categoryCounts[k] ?? 0] as [string, number])
-    .filter((r) => r[1] > 0)
-    .sort((a, b) => b[1] - a[1])
-  addTable(categorias, ['Categoría', 'Tickets'], catRows, [26, 12])
-  if (catRows.length > 0) {
+  // Se conserva la clave junto a la etiqueta: es lo que permite darle a cada
+  // barra el color de su categoría sin buscar la etiqueta al revés.
+  const catData = (Object.keys(categoryCounts) as TicketCategory[])
+    .map((key) => ({
+      key,
+      label: CATEGORY_LABELS[key] ?? key,
+      total: categoryCounts[key] ?? 0,
+    }))
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.total - a.total)
+
+  addTable(
+    categorias,
+    ['Categoría', 'Tickets'],
+    catData.map((c) => [c.label, c.total]),
+    [26, 12],
+  )
+  if (catData.length > 0) {
     charts.set(4, [
       {
         kind: 'bar',
@@ -195,18 +262,11 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         sheet: 'Por categoría',
         headerRow: 1,
         firstRow: 2,
-        lastRow: 1 + catRows.length,
+        lastRow: 1 + catData.length,
         labelCol: 'A',
         valueCol: 'B',
         anchor: { col: 3, row: 1 },
-        colors: catRows.map(
-          ([label]) =>
-            CATEGORY_COLORS[
-              (Object.keys(CATEGORY_LABELS) as TicketCategory[]).find(
-                (k) => CATEGORY_LABELS[k] === label,
-              ) ?? 'other'
-            ],
-        ),
+        colors: catData.map((c) => CATEGORY_COLORS[c.key]),
       },
     ])
   }
@@ -236,6 +296,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         labelCol: 'A',
         valueCol: 'B',
         anchor: { col: 4, row: 1 },
+        seriesColor: SERIES_COLOR,
       },
     ])
   }
@@ -255,6 +316,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
       labelCol: 'A',
       valueCol: 'B',
       anchor: { col: 3, row: 1 },
+      seriesColor: SERIES_COLOR,
     },
   ])
 
@@ -279,6 +341,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         labelCol: 'A',
         valueCol: 'B',
         anchor: { col: 4, row: 1 },
+        seriesColor: SERIES_COLOR,
       },
     ])
   }
@@ -299,6 +362,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         labelCol: 'A',
         valueCol: 'B',
         anchor: { col: 3, row: 1 },
+        seriesColor: SERIES_COLOR,
       },
     ])
   }
@@ -307,12 +371,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
   // No se acota al mes: su utilidad es justamente comparar entre meses.
   const tendencia = wb.addWorksheet('Tendencia mensual')
   const flowRows = monthly.map((m) => [m.label, m.created, m.closed])
-  addTable(
-    tendencia,
-    ['Mes', 'Creados', 'Cerrados'],
-    flowRows,
-    [18, 12, 12],
-  )
+  addTable(tendencia, ['Mes', 'Creados', 'Cerrados'], flowRows, [18, 12, 12])
   if (flowRows.length > 0) {
     charts.set(9, [
       {
@@ -325,6 +384,7 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         labelCol: 'A',
         valueCol: 'B',
         anchor: { col: 4, row: 1 },
+        seriesColor: SERIES_COLOR,
       },
       {
         kind: 'bar',
@@ -335,7 +395,8 @@ export async function buildStatsWorkbook(month: string | null): Promise<Buffer> 
         lastRow: 1 + flowRows.length,
         labelCol: 'A',
         valueCol: 'C',
-        anchor: { col: 4, row: 20 },
+        anchor: { col: 4, row: 31 },
+        seriesColor: SERIES_COLOR,
       },
     ])
   }
