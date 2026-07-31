@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { db } from '@/lib/db'
-import { DEV_BYPASS_AUTH } from '@/lib/dev-mock'
+import { DEV_BYPASS_AUTH, getMockTicketMonths } from '@/lib/dev-mock'
 import type { TicketCategory, TicketPriority } from '@/lib/db/schema'
 import { sql } from 'drizzle-orm'
 
@@ -24,18 +24,39 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/**
+ * Acota una consulta al mes indicado ('YYYY-MM'), o no filtra nada si viene
+ * vacío. Se compara siempre contra `created_at`: el criterio es "tickets
+ * levantados en ese mes", el mismo en todas las métricas para que los
+ * números de la pantalla cuadren entre sí.
+ *
+ * Devuelve un fragmento que empieza con `and`, así que quien lo use debe
+ * tener ya un `where` (aunque sea `where true`).
+ */
+function monthFilter(month: string | undefined, column = sql`created_at`) {
+  return month ? sql` and to_char(${column}, 'YYYY-MM') = ${month}` : sql``
+}
+
+/** Opciones comunes de las consultas de análisis. */
+export interface StatsFilters {
+  /** Mes en formato 'YYYY-MM'. Sin él, se calcula sobre todo el histórico. */
+  month?: string
+}
+
 // ============================================================
 // Prioridad
 // ============================================================
 
-export async function getPriorityCounts(): Promise<
+export async function getPriorityCounts({ month }: StatsFilters = {}): Promise<
   Record<TicketPriority, number>
 > {
   const empty: Record<TicketPriority, number> = { low: 0, medium: 0, high: 0 }
   if (DEV_BYPASS_AUTH) return empty
 
   const result = await rows<{ priority: TicketPriority; n: number }>(
-    sql`select priority, count(*)::int as n from tickets group by priority`,
+    sql`select priority, count(*)::int as n from tickets
+        where true${monthFilter(month)}
+        group by priority`,
   )
 
   for (const r of result) empty[r.priority] = r.n
@@ -57,7 +78,9 @@ export interface ResolutionStats {
   maxDays: number
 }
 
-export async function getResolutionStats(): Promise<ResolutionStats> {
+export async function getResolutionStats({
+  month,
+}: StatsFilters = {}): Promise<ResolutionStats> {
   if (DEV_BYPASS_AUTH) {
     return { closed: 0, medianDays: 0, avgDays: 0, maxDays: 0 }
   }
@@ -80,7 +103,7 @@ export async function getResolutionStats(): Promise<ResolutionStats> {
         extract(epoch from (closed_at - created_at)) / 86400
       )::numeric, 1) as max_days
     from tickets
-    where closed_at is not null and closed_at >= created_at
+    where closed_at is not null and closed_at >= created_at${monthFilter(month)}
   `)
 
   return {
@@ -98,7 +121,9 @@ export interface CategoryResolution {
 }
 
 /** Mediana de días para cerrar, por categoría. Revela dónde se atora el proceso. */
-export async function getResolutionByCategory(): Promise<CategoryResolution[]> {
+export async function getResolutionByCategory({
+  month,
+}: StatsFilters = {}): Promise<CategoryResolution[]> {
   if (DEV_BYPASS_AUTH) return []
 
   const result = await rows<{
@@ -113,7 +138,7 @@ export async function getResolutionByCategory(): Promise<CategoryResolution[]> {
         order by extract(epoch from (closed_at - created_at)) / 86400
       ))::numeric, 1) as median_days
     from tickets
-    where closed_at is not null and closed_at >= created_at
+    where closed_at is not null and closed_at >= created_at${monthFilter(month)}
     group by category
     order by median_days desc nulls last
   `)
@@ -126,7 +151,9 @@ export async function getResolutionByCategory(): Promise<CategoryResolution[]> {
 }
 
 /** Mediana de horas hasta el primer comentario de alguien distinto al solicitante. */
-export async function getFirstResponseHours(): Promise<{
+export async function getFirstResponseHours({
+  month,
+}: StatsFilters = {}): Promise<{
   answered: number
   medianHours: number
 }> {
@@ -138,6 +165,7 @@ export async function getFirstResponseHours(): Promise<{
       from tickets t
       join ticket_comments c
         on c.ticket_id = t.id and c.author_id <> t.created_by_id
+      where true${monthFilter(month, sql`t.created_at`)}
       group by t.id, t.created_at
     )
     select
@@ -165,7 +193,9 @@ export interface AgingBucket {
 }
 
 /** Antigüedad de los tickets que siguen sin cerrarse. */
-export async function getBacklogAging(): Promise<AgingBucket[]> {
+export async function getBacklogAging({
+  month,
+}: StatsFilters = {}): Promise<AgingBucket[]> {
   const buckets: AgingBucket[] = [
     { key: 'd0', label: 'Menos de 3 días', count: 0, critical: false },
     { key: 'd3', label: '3 a 7 días', count: 0, critical: false },
@@ -186,7 +216,7 @@ export async function getBacklogAging(): Promise<AgingBucket[]> {
       end as bucket,
       count(*)::int as n
     from tickets
-    where closed_at is null
+    where closed_at is null${monthFilter(month)}
     group by bucket
   `)
 
@@ -198,26 +228,34 @@ export async function getBacklogAging(): Promise<AgingBucket[]> {
 }
 
 /** Tickets activos que no tienen a nadie asignado. */
-export async function getUnassignedActive(): Promise<number> {
+export async function getUnassignedActive({
+  month,
+}: StatsFilters = {}): Promise<number> {
   if (DEV_BYPASS_AUTH) return 0
 
   const [r] = await rows<{ n: number }>(sql`
     select count(*)::int as n
     from tickets
-    where assigned_to_id is null and closed_at is null
+    where assigned_to_id is null and closed_at is null${monthFilter(month)}
   `)
   return r?.n ?? 0
 }
 
 /** Tickets que volvieron a abrirse después de resolverse o cerrarse. */
-export async function getReopenedCount(): Promise<number> {
+export async function getReopenedCount({
+  month,
+}: StatsFilters = {}): Promise<number> {
   if (DEV_BYPASS_AUTH) return 0
 
+  // Se cuenta contra el mes en que se creó el ticket, no el de la reapertura,
+  // para que cuadre con el resto de métricas del periodo.
   const [r] = await rows<{ n: number }>(sql`
-    select count(distinct ticket_id)::int as n
-    from ticket_status_history
-    where from_status in ('closed', 'resolved')
-      and to_status in ('open', 'in_progress', 'waiting_user')
+    select count(distinct h.ticket_id)::int as n
+    from ticket_status_history h
+    join tickets t on t.id = h.ticket_id
+    where h.from_status in ('closed', 'resolved')
+      and h.to_status in ('open', 'in_progress', 'waiting_user')
+      ${monthFilter(month, sql`t.created_at`)}
   `)
   return r?.n ?? 0
 }
@@ -234,7 +272,9 @@ export interface TechWorkload {
 }
 
 /** Cuántos tickets carga cada técnico — muestra si el trabajo está parejo. */
-export async function getWorkloadByTech(): Promise<TechWorkload[]> {
+export async function getWorkloadByTech({
+  month,
+}: StatsFilters = {}): Promise<TechWorkload[]> {
   if (DEV_BYPASS_AUTH) return []
 
   return rows<TechWorkload>(sql`
@@ -244,6 +284,7 @@ export async function getWorkloadByTech(): Promise<TechWorkload[]> {
       count(*) filter (where t.closed_at is null)::int as active
     from tickets t
     join users u on u.id = t.assigned_to_id
+    where true${monthFilter(month, sql`t.created_at`)}
     group by u.name
     order by total desc
   `)
@@ -255,13 +296,17 @@ export interface Requester {
 }
 
 /** Quién levanta más tickets — señala áreas que necesitan apoyo o capacitación. */
-export async function getTopRequesters(limit = 6): Promise<Requester[]> {
+export async function getTopRequesters(
+  limit = 6,
+  { month }: StatsFilters = {},
+): Promise<Requester[]> {
   if (DEV_BYPASS_AUTH) return []
 
   return rows<Requester>(sql`
     select u.name, count(*)::int as total
     from tickets t
     join users u on u.id = t.created_by_id
+    where true${monthFilter(month, sql`t.created_at`)}
     group by u.name
     order by total desc
     limit ${limit}
@@ -271,6 +316,25 @@ export async function getTopRequesters(limit = 6): Promise<Requester[]> {
 // ============================================================
 // Tendencia
 // ============================================================
+
+/**
+ * Meses que tienen al menos un ticket, del más reciente al más antiguo.
+ * Alimenta el selector de periodo: así solo se ofrecen meses con datos,
+ * en vez de una lista fija que se quedaría corta al llegar agosto.
+ */
+export async function getTicketMonths(): Promise<
+  { month: string; total: number }[]
+> {
+  // ⚠️ Solo desarrollo/visual: meses de ejemplo sin BD.
+  if (DEV_BYPASS_AUTH) return getMockTicketMonths()
+
+  return rows<{ month: string; total: number }>(sql`
+    select to_char(created_at, 'YYYY-MM') as month, count(*)::int as total
+    from tickets
+    group by 1
+    order by 1 desc
+  `)
+}
 
 export interface MonthlyFlow {
   month: string

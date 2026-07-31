@@ -203,9 +203,9 @@ const BASE_TICKETS = [
   {
     id: '10000000-0000-0000-0000-000000000009',
     number: 58,
-    title: 'Cyscap no genera el reporte de pólizas',
+    title: 'Syscap no genera el reporte de pólizas',
     description:
-      'Al exportar el reporte mensual de pólizas en Cyscap el archivo sale vacío.',
+      'Al exportar el reporte mensual de pólizas en Syscap el archivo sale vacío.',
     status: 'waiting_user',
     priority: 'medium',
     category: 'cyscap',
@@ -291,6 +291,25 @@ export function getMockCategoryCounts(): Record<TicketCategory, number> {
   }
 
   return counts
+}
+
+/**
+ * Meses con tickets de ejemplo, del más reciente al más antiguo.
+ * Sirve para poder ver el filtro de periodo de Estadísticas sin BD.
+ */
+export function getMockTicketMonths(): { month: string; total: number }[] {
+  const byMonth = new Map<string, number>()
+
+  for (const t of BASE_TICKETS) {
+    const key = `${t.createdAt.getFullYear()}-${String(
+      t.createdAt.getMonth() + 1,
+    ).padStart(2, '0')}`
+    byMonth.set(key, (byMonth.get(key) ?? 0) + 1)
+  }
+
+  return [...byMonth.entries()]
+    .map(([month, total]) => ({ month, total }))
+    .sort((a, b) => b.month.localeCompare(a.month))
 }
 
 // Detalle de un ticket, con comentarios e historial de ejemplo.

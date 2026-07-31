@@ -79,7 +79,9 @@ export const CATEGORY_LABELS: Record<TicketCategory, string> = {
   access: 'Credenciales',
   entorno: 'Entorno',
   zazu: 'Zazu',
-  cyscap: 'Cyscap',
+  // La clave interna sigue siendo 'cyscap' (valor del enum en Postgres);
+  // aquí se corrige solo el nombre que ve la gente.
+  cyscap: 'Syscap',
   goodteam: 'Good Team',
   compras: 'Compras de Equipo',
   other: 'Otro',
@@ -123,7 +125,7 @@ export const CATEGORY_PREFIXES: Record<TicketCategory, string> = {
   access: 'CRD', // Credenciales
   entorno: 'ENT',
   zazu: 'ZZU',
-  cyscap: 'CYS',
+  cyscap: 'SYS',
   goodteam: 'GDT',
   compras: 'CMP',
   other: 'OTR',
@@ -146,4 +148,71 @@ export const ROLE_LABELS: Record<'user' | 'it' | 'admin', string> = {
   user: 'Usuario',
   it: 'IT',
   admin: 'Administrador',
+}
+
+// ─── Periodos (filtro de mes en Estadísticas) ─────────────────────────────
+
+/** Un mes en formato 'YYYY-MM', que es como viaja en la URL. */
+export const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+
+export function isValidMonth(month: string | undefined | null): boolean {
+  return typeof month === 'string' && MONTH_PATTERN.test(month)
+}
+
+/**
+ * 'Julio de 2026' a partir de '2026-07'.
+ *
+ * Se fija la zona en UTC para que la etiqueta no se corra un mes cuando el
+ * servidor está en una zona negativa: sin esto, '2026-07' renderizado en
+ * GMT-6 puede mostrarse como junio.
+ */
+export function formatMonthLabel(month: string): string {
+  if (!isValidMonth(month)) return month
+
+  const [year, m] = month.split('-').map(Number)
+  const label = new Intl.DateTimeFormat('es-MX', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, m - 1, 1)))
+
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+/** 'julio-2026' — para nombrar archivos exportados. */
+export function monthSlug(month: string): string {
+  return formatMonthLabel(month).toLowerCase().replace(/\s+de\s+/, '-')
+}
+
+/** El mes en curso, en UTC para que coincida con el corte de la base. */
+export function currentMonth(): string {
+  const now = new Date()
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/** Suma (o resta) meses a un 'YYYY-MM'. */
+export function addMonths(month: string, delta: number): string {
+  const [year, m] = month.split('-').map(Number)
+  const d = new Date(Date.UTC(year, m - 1 + delta, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * Todos los meses entre dos extremos, ambos incluidos y sin huecos.
+ *
+ * Las flechas del selector deben avanzar de uno en uno aunque algún mes no
+ * tenga tickets; si solo se listaran los meses con datos, saltarían de junio
+ * a agosto y parecería que falta información.
+ */
+export function monthSequence(from: string, to: string): string[] {
+  if (!isValidMonth(from) || !isValidMonth(to) || from > to) return []
+
+  const out: string[] = []
+  let cursor = from
+  // Tope de seguridad: 10 años, por si llegara una fecha corrupta.
+  for (let i = 0; cursor <= to && i < 120; i += 1) {
+    out.push(cursor)
+    cursor = addMonths(cursor, 1)
+  }
+  return out
 }

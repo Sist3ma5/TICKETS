@@ -78,6 +78,15 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
         {hiddenInput}
 
+        {/* Los adjuntos van arriba del texto para que se vean antes de enviar. */}
+        <AttachmentList
+          value={attachments}
+          onRemove={removeAt}
+          disabled={isPending}
+        />
+
+        {error && <p className="text-destructive text-xs">{error}</p>}
+
         <FormField
           control={form.control}
           name="body"
@@ -102,14 +111,6 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
             </FormItem>
           )}
         />
-
-        <AttachmentList
-          value={attachments}
-          onRemove={removeAt}
-          disabled={isPending}
-        />
-
-        {error && <p className="text-destructive text-xs">{error}</p>}
 
         {/* Adjuntar y Comentar, juntos y visibles */}
         <div className="flex items-center justify-end gap-2">

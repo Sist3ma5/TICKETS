@@ -26,6 +26,7 @@ import {
   ilike,
   inArray,
   max,
+  sql,
   type SQL,
 } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
@@ -50,6 +51,15 @@ export interface TicketFilters {
   sort?: 'asc' | 'desc'
   assignedToId?: string
   createdById?: string
+  /**
+   * Mes de creación en formato 'YYYY-MM'.
+   *
+   * Se compara con to_char sobre created_at, el mismo criterio con el que
+   * getTicketMonths agrupa. Es deliberado: con rangos de Date el driver
+   * convierte a la zona del servidor y el corte de medianoche se desplaza,
+   * así que los totales del selector no cuadrarían con los de la vista.
+   */
+  month?: string
 }
 
 function buildBaseConditions(
@@ -70,6 +80,11 @@ function buildBaseConditions(
   }
   if (filters.createdById) {
     conditions.push(eq(tickets.createdById, filters.createdById))
+  }
+  if (filters.month) {
+    conditions.push(
+      sql`to_char(${tickets.createdAt}, 'YYYY-MM') = ${filters.month}`,
+    )
   }
   return conditions
 }
@@ -139,16 +154,19 @@ export async function getNextTicketNumber(): Promise<number> {
   return (row?.value ?? 0) + 1
 }
 
-/** Conteo de tickets por categoría — alimenta la sección del sidebar. */
-export async function getCategoryCounts(): Promise<
-  Record<TicketCategory, number>
-> {
+/** Conteo de tickets por categoría — acepta el mismo acotado por mes. */
+export async function getCategoryCounts(
+  filters: Pick<TicketFilters, 'month'> = {},
+): Promise<Record<TicketCategory, number>> {
   // ⚠️ Solo desarrollo/visual: conteos de ejemplo sin BD.
   if (DEV_BYPASS_AUTH) return getMockCategoryCounts()
+
+  const conditions = buildBaseConditions(filters)
 
   const result = await db
     .select({ category: tickets.category, count: count() })
     .from(tickets)
+    .where(conditions.length ? and(...conditions) : undefined)
     .groupBy(tickets.category)
 
   const counts = emptyCategoryCounts()

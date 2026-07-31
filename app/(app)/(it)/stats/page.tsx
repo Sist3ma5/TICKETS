@@ -15,12 +15,18 @@ import {
 import { DonutChart, type DonutSlice } from '@/components/stats/donut-chart'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { ExportMonthButton } from '@/components/stats/export-month-button'
+import { MonthFilter } from '@/components/stats/month-filter'
 import {
   CATEGORY_ICONS,
   CATEGORY_LABELS,
   PRIORITY_LABELS,
   STATUS_LABELS,
   TICKET_CATEGORIES,
+  currentMonth,
+  formatMonthLabel,
+  isValidMonth,
+  monthSequence,
 } from '@/lib/constants'
 import {
   getBacklogAging,
@@ -30,6 +36,7 @@ import {
   getReopenedCount,
   getResolutionByCategory,
   getResolutionStats,
+  getTicketMonths,
   getTopRequesters,
   getUnassignedActive,
   getWorkloadByTech,
@@ -122,7 +129,18 @@ function Section({
   )
 }
 
-export default async function StatsPage() {
+interface PageProps {
+  searchParams: Promise<{ month?: string }>
+}
+
+export default async function StatsPage({ searchParams }: PageProps) {
+  const params = await searchParams
+
+  // El mes llega por la URL, así que se valida antes de tocar las consultas:
+  // un valor basura cae en "todo el histórico" en vez de romper la página.
+  const month = isValidMonth(params.month) ? params.month! : null
+  const periodo = month ? { month } : {}
+
   const [
     statusCounts,
     categoryCounts,
@@ -136,20 +154,43 @@ export default async function StatsPage() {
     workload,
     requesters,
     monthly,
+    months,
   ] = await Promise.all([
-    getStatusCounts({}),
-    getCategoryCounts(),
-    getPriorityCounts(),
-    getResolutionStats(),
-    getResolutionByCategory(),
-    getFirstResponseHours(),
-    getBacklogAging(),
-    getUnassignedActive(),
-    getReopenedCount(),
-    getWorkloadByTech(),
-    getTopRequesters(),
+    getStatusCounts(periodo),
+    getCategoryCounts(periodo),
+    getPriorityCounts(periodo),
+    getResolutionStats(periodo),
+    getResolutionByCategory(periodo),
+    getFirstResponseHours(periodo),
+    getBacklogAging(periodo),
+    getUnassignedActive(periodo),
+    getReopenedCount(periodo),
+    getWorkloadByTech(periodo),
+    getTopRequesters(6, periodo),
+    // La tendencia mensual NO se filtra: su valor es justamente comparar
+    // unos meses contra otros.
     getMonthlyFlow(),
+    getTicketMonths(),
   ])
+
+  // Meses navegables: del primero con tickets hasta el mes en curso, seguidos
+  // y sin huecos. Los meses sin actividad se incluyen con cero para que las
+  // flechas avancen de uno en uno en vez de saltarse periodos.
+  //
+  // El mes seleccionado se fuerza dentro del rango aunque quede fuera de él
+  // (una URL a mano puede pedir un mes futuro o anterior al primer ticket):
+  // así el selector nunca contradice al encabezado de la página.
+  const conDatos = new Map(months.map((m) => [m.month, m.total]))
+  const primerMes = months.length
+    ? months[months.length - 1].month
+    : currentMonth()
+  const desde = month && month < primerMes ? month : primerMes
+  const hasta = month && month > currentMonth() ? month : currentMonth()
+
+  const mesesNavegables = monthSequence(desde, hasta).map((m) => ({
+    month: m,
+    total: conDatos.get(m) ?? 0,
+  }))
 
   const total = statusCounts.all
   const active = total - statusCounts.closed
@@ -300,13 +341,23 @@ export default async function StatsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Estadísticas</h1>
           <p className="text-muted-foreground text-sm">
-            Análisis de {total} tickets registrados.
+            {month
+              ? `Análisis de ${total} tickets levantados en ${formatMonthLabel(month)}.`
+              : `Análisis de ${total} tickets registrados.`}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/tickets/all">Ver tickets</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportMonthButton month={month} />
+          <Button asChild variant="outline">
+            <Link href="/tickets/all">Ver tickets</Link>
+          </Button>
+        </div>
       </header>
+
+      {/* Periodo — arriba, para elegir el mes antes de leer cualquier número */}
+      {mesesNavegables.length > 0 && (
+        <MonthFilter months={mesesNavegables} current={month} />
+      )}
 
       {/* Indicadores principales */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

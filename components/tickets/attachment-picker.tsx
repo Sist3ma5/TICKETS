@@ -178,6 +178,12 @@ export function AttachmentDropzone({
     <div className={cn('space-y-3', className)}>
       {hiddenInput}
 
+      {/* Los archivos ya elegidos van arriba: son lo que la persona quiere
+          revisar antes de enviar. La zona para agregar más queda debajo. */}
+      <AttachmentList value={value} onRemove={removeAt} disabled={disabled} />
+
+      {error && <p className="text-destructive text-xs">{error}</p>}
+
       <button
         type="button"
         disabled={disabled}
@@ -207,10 +213,6 @@ export function AttachmentDropzone({
           Imágenes, PDF, Word, Excel o texto · máximo {maxSizeMb} MB por archivo
         </span>
       </button>
-
-      {error && <p className="text-destructive text-xs">{error}</p>}
-
-      <AttachmentList value={value} onRemove={removeAt} disabled={disabled} />
     </div>
   )
 }

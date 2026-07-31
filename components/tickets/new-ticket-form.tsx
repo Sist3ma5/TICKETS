@@ -203,6 +203,22 @@ export function NewTicketForm({
           )}
         />
 
+        {/* Adjuntos — arriba de prioridad para que las capturas y documentos
+            queden a la vista y no enterrados al final del formulario. */}
+        <div className="space-y-2">
+          <p className="text-sm leading-none font-medium">
+            Adjuntos{' '}
+            <span className="text-muted-foreground font-normal">
+              Opcional · máximo 10 MB por archivo
+            </span>
+          </p>
+          <AttachmentDropzone
+            value={attachments}
+            onChange={setAttachments}
+            disabled={isPending}
+          />
+        </div>
+
         {/* Prioridad + preview del folio que se asignará */}
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
@@ -265,21 +281,6 @@ export function NewTicketForm({
                 : '—'}
             </span>
           </div>
-        </div>
-
-        {/* Adjuntos — capturas o documentos para ayuda remota */}
-        <div className="space-y-2">
-          <p className="text-sm leading-none font-medium">
-            Adjuntos{' '}
-            <span className="text-muted-foreground font-normal">
-              Opcional · máximo 10 MB por archivo
-            </span>
-          </p>
-          <AttachmentDropzone
-            value={attachments}
-            onChange={setAttachments}
-            disabled={isPending}
-          />
         </div>
 
         <div className="flex items-center justify-end gap-2 pt-2">
