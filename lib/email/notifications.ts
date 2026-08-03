@@ -1,9 +1,16 @@
 import 'server-only'
 
+import { AssignedTicketEmail } from '@/emails/assigned-ticket'
 import { NewCommentEmail } from '@/emails/new-comment'
 import { NewTicketEmail } from '@/emails/new-ticket'
 import { StatusChangeEmail } from '@/emails/status-change'
-import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '@/lib/constants'
+import {
+  CATEGORY_COLORS,
+  CATEGORY_LABELS,
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+  STATUS_LABELS,
+} from '@/lib/constants'
 import type { TicketCategory, TicketPriority, TicketStatus } from '@/lib/db/schema'
 
 import { APP_URL } from './client'
@@ -66,6 +73,55 @@ export async function notifyNewTicket(args: {
       category: CATEGORY_LABELS[category],
       priority: PRIORITY_LABELS[priority],
       createdByName,
+      ticketUrl: `${APP_URL}/ticket/${args.ticketId}`,
+    }),
+  })
+}
+
+/**
+ * Aviso a quien se le acaba de asignar un ticket a mano.
+ *
+ * Distinto de notifyNewTicket, que solo salta en el enrutamiento automático
+ * al crearse. Sin esto, reasignar un ticket dejaba al nuevo responsable sin
+ * enterarse: tenía que descubrirlo entrando al sistema.
+ */
+export async function notifyAssignment(args: {
+  ticketId: string
+  ticketTitle: string
+  ticketCode: string
+  category: TicketCategory
+  priority: TicketPriority
+  createdByName: string
+  assignedByName: string
+  recipient: Recipient | null
+}) {
+  const {
+    ticketTitle,
+    ticketCode,
+    category,
+    priority,
+    createdByName,
+    assignedByName,
+    recipient,
+  } = args
+
+  if (!recipient || !recipient.email) return
+
+  await sendEmail({
+    to: recipient.email,
+    subject: `Se te asignó ${ticketCode}: ${ticketTitle}`,
+    react: AssignedTicketEmail({
+      recipientName: recipient.name ?? recipient.email,
+      ticketTitle,
+      ticketCode,
+      categoryLabel: CATEGORY_LABELS[category],
+      // Los mismos colores que usa la app, para que el correo y la pantalla
+      // se lean igual.
+      categoryColor: CATEGORY_COLORS[category],
+      priorityLabel: PRIORITY_LABELS[priority],
+      priorityColor: PRIORITY_COLORS[priority],
+      createdByName,
+      assignedByName,
       ticketUrl: `${APP_URL}/ticket/${args.ticketId}`,
     }),
   })

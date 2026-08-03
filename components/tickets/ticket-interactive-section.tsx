@@ -49,6 +49,7 @@ import {
   STATUS_COLORS,
   STATUS_LABELS,
   TICKET_CATEGORIES,
+  formatTicketCode,
 } from '@/lib/constants'
 import type {
   ITUser,
@@ -137,8 +138,19 @@ export function TicketInteractiveSection({
         toast.error(result.message)
         return
       }
-      toast.success('Ticket eliminado')
-      router.push('/tickets')
+      // Se sale con una recarga real del navegador, no con el router.
+      //
+      // Una navegación del router mantiene viva la aplicación y Next alcanza
+      // a re-renderizar esta ruta —cuyo ticket ya no existe— antes de irse:
+      // ahí es donde asomaba el 404. Al recargar, el navegador abandona la
+      // página por completo y la lista se pide limpia al servidor.
+      //
+      // `replace` en vez de `assign`: el ticket borrado no queda en el
+      // historial, así "Atrás" no regresa a una página muerta.
+      const code = formatTicketCode(ticket.category, ticket.number)
+      window.location.replace(
+        `/tickets/all?eliminado=${encodeURIComponent(code)}`,
+      )
     })
   }
 

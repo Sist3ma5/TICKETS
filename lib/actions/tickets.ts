@@ -9,7 +9,11 @@ import { requireAdminUser, requireITUser, requireUser } from '@/lib/auth'
 import { formatTicketCode } from '@/lib/constants'
 import { db } from '@/lib/db'
 import { getTechnicianForCategory } from '@/lib/db/queries/tickets'
-import { DEV_BYPASS_AUTH, MOCK_CREATED_TICKET_ID } from '@/lib/dev-mock'
+import {
+  DEV_BYPASS_AUTH,
+  MOCK_CREATED_TICKET_ID,
+  getMockNextTicketNumber,
+} from '@/lib/dev-mock'
 import type {
   TicketCategory,
   TicketPriority,
@@ -31,13 +35,16 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { after } from 'next/server'
 import {
+  notifyAssignment,
   notifyNewComment,
   notifyNewTicket,
   notifyStatusChange,
 } from '@/lib/email/notifications'
 
 type CreateTicketResult =
-  | { ok: true; ticketId: string }
+  // El folio va de regreso para poder confirmarle al usuario, con su número
+  // real, que el ticket sí quedó registrado.
+  | { ok: true; ticketId: string; ticketNumber: number }
   | {
       ok: false
       message: string
@@ -65,7 +72,11 @@ export async function createTicket(
 
   // ⚠️ Solo desarrollo/visual: no hay BD, simulamos la creación.
   if (DEV_BYPASS_AUTH) {
-    return { ok: true, ticketId: MOCK_CREATED_TICKET_ID }
+    return {
+      ok: true,
+      ticketId: MOCK_CREATED_TICKET_ID,
+      ticketNumber: getMockNextTicketNumber(),
+    }
   }
 
   try {
@@ -136,7 +147,7 @@ export async function createTicket(
     revalidatePath('/tickets')
     revalidatePath('/tickets/all')
 
-    return { ok: true, ticketId: newTicket.id }
+    return { ok: true, ticketId: newTicket.id, ticketNumber: newTicket.number }
   } catch (err) {
     console.error('Error creando ticket:', err)
     return {
@@ -301,6 +312,7 @@ export async function updateTicketDetails(input: {
       closedAt: tickets.closedAt,
       createdById: tickets.createdById, // ← para notificar al creador
       title: tickets.title, // ← para el asunto del correo
+      number: tickets.number, // ← para armar el folio del aviso de asignación
     })
     .from(tickets)
     .where(eq(tickets.id, ticketId))
@@ -427,6 +439,43 @@ export async function updateTicketDetails(input: {
     })
   }
 
+  // Aviso a quien acaba de recibir el ticket. No se manda si alguien se lo
+  // asignó a sí mismo: ya lo sabe.
+  if (assignmentChanged && newAssignedToId && newAssignedToId !== user.id) {
+    after(async () => {
+      try {
+        const [assignee, creator] = await Promise.all([
+          db
+            .select({ email: users.email, name: users.name })
+            .from(users)
+            .where(eq(users.id, newAssignedToId))
+            .limit(1),
+          db
+            .select({ name: users.name, email: users.email })
+            .from(users)
+            .where(eq(users.id, current.createdById))
+            .limit(1),
+        ])
+
+        await notifyAssignment({
+          ticketId,
+          ticketTitle: current.title,
+          ticketCode: formatTicketCode(
+            newCategory ?? current.category,
+            current.number,
+          ),
+          category: newCategory ?? current.category,
+          priority: newPriority ?? current.priority,
+          createdByName: creator[0]?.name ?? creator[0]?.email ?? 'un usuario',
+          assignedByName: user.name ?? user.email,
+          recipient: assignee[0] ?? null,
+        })
+      } catch (err) {
+        console.error('[email] Error al notificar la asignación:', err)
+      }
+    })
+  }
+
   return { ok: true as const }
 }
 
@@ -450,8 +499,15 @@ export async function deleteTicket(ticketId: string) {
   try {
     await db.delete(tickets).where(eq(tickets.id, ticketId))
 
-    revalidatePath('/tickets')
-    revalidatePath('/tickets/all')
+    // A propósito NO se llama revalidatePath aquí.
+    //
+    // Revalidar invalida la caché del router en el cliente, y eso hace que
+    // Next vuelva a pedir la ruta en la que está el usuario: /ticket/[id].
+    // Como el ticket acaba de borrarse, esa página responde notFound() y
+    // aparecía un 404 justo después de eliminar.
+    //
+    // No hace falta: las listas son force-dynamic, así que se arman de nuevo
+    // en el servidor en cuanto se navega a ellas.
 
     return { ok: true as const }
   } catch (err) {
