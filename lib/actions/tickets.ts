@@ -5,7 +5,7 @@ import {
   validateAttachments,
   type AttachmentInput,
 } from '@/lib/attachments'
-import { requireAdminUser, requireITUser, requireUser } from '@/lib/auth'
+import { requireITUser, requireUser } from '@/lib/auth'
 import { formatTicketCode } from '@/lib/constants'
 import { db } from '@/lib/db'
 import { getTechnicianForCategory } from '@/lib/db/queries/tickets'
@@ -498,8 +498,8 @@ export async function updateTicketDetails(input: {
 }
 
 export async function deleteTicket(ticketId: string) {
-  // Solo el rol Admin puede borrar tickets.
-  await requireAdminUser()
+  // El admin borra cualquiera; IT solo lo que tiene asignado.
+  const user = await requireITUser()
 
   // ⚠️ Solo desarrollo/visual: no hay BD, simulamos el borrado.
   if (DEV_BYPASS_AUTH) {
@@ -507,12 +507,24 @@ export async function deleteTicket(ticketId: string) {
   }
 
   const [ticket] = await db
-    .select({ id: tickets.id, closedAt: tickets.closedAt })
+    .select({ id: tickets.id, assignedToId: tickets.assignedToId })
     .from(tickets)
     .where(eq(tickets.id, ticketId))
     .limit(1)
 
   if (!ticket) return { ok: false as const, message: 'Ticket no encontrado' }
+
+  // La regla se valida aquí, no solo escondiendo el botón: la interfaz se
+  // puede saltar llamando la acción directo.
+  const puedeBorrar =
+    user.role === 'admin' || ticket.assignedToId === user.id
+
+  if (!puedeBorrar) {
+    return {
+      ok: false as const,
+      message: 'Solo puedes eliminar tickets que tengas asignados.',
+    }
+  }
 
   try {
     await db.delete(tickets).where(eq(tickets.id, ticketId))

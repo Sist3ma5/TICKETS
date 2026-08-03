@@ -28,7 +28,11 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <TicketDetail ticket={ticket} currentUserRole={user.role} />
+      <TicketDetail
+        ticket={ticket}
+        currentUserRole={user.role}
+        currentUserId={user.id}
+      />
     </div>
   )
 }

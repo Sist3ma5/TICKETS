@@ -29,7 +29,11 @@ export default async function InterceptedTicketDetail({ params }: PageProps) {
 
   return (
     <TicketDetailSheet>
-      <TicketDetail ticket={ticket} currentUserRole={user.role} />
+      <TicketDetail
+        ticket={ticket}
+        currentUserRole={user.role}
+        currentUserId={user.id}
+      />
     </TicketDetailSheet>
   )
 }

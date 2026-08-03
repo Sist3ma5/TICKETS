@@ -12,11 +12,14 @@ import type { UserRole } from '@/lib/db/schema'
 interface TicketDetailProps {
   ticket: TicketDetails
   currentUserRole: UserRole
+  /** Hace falta para saber si un técnico de IT trae este ticket asignado. */
+  currentUserId: string
 }
 
 export async function TicketDetail({
   ticket,
   currentUserRole,
+  currentUserId,
 }: TicketDetailProps) {
   // Los admins también atienden tickets: cargan la lista de asignables igual
   // que IT, para poder asignarse un ticket a sí mismos.
@@ -72,6 +75,7 @@ export async function TicketDetail({
         attachments={ticket.attachments}
         itUsers={itUsers}
         currentUserRole={currentUserRole}
+        currentUserId={currentUserId}
         timeline={timeline}
       />
     </div>

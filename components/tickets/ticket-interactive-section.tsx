@@ -85,6 +85,8 @@ interface TicketInteractiveSectionProps {
   attachments: TicketAttachmentItem[]
   itUsers: ITUser[]
   currentUserRole: UserRole
+  /** Para saber si un técnico de IT trae este ticket asignado. */
+  currentUserId: string
   timeline: TimelineItem[]
 }
 
@@ -95,6 +97,7 @@ export function TicketInteractiveSection({
   attachments,
   itUsers,
   currentUserRole,
+  currentUserId,
   timeline,
 }: TicketInteractiveSectionProps) {
   const router = useRouter()
@@ -105,8 +108,11 @@ export function TicketInteractiveSection({
   // Un ticket cerrado se congela para IT, pero el admin puede reabrirlo o
   // corregirlo. Sin esto, un cierre por error quedaba sin arreglo posible.
   const canEdit = isStaff && (!ticket.closedAt || isAdmin)
-  // El borrado es exclusivo del rol Admin, incluso en tickets cerrados.
-  const canDelete = isAdmin
+  // El admin borra cualquier ticket; IT solo los que trae asignados. Aplica
+  // también a los cerrados. La regla se valida igual en el servidor.
+  const canDelete =
+    isAdmin ||
+    (currentUserRole === 'it' && ticket.assignedToId === currentUserId)
 
   // Adjuntos del ticket (sin comentario). Los de comentarios se muestran
   // dentro de cada comentario en la Actividad.
