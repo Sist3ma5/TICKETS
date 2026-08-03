@@ -58,7 +58,7 @@ export function UserMenu({ user }: UserMenuProps) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg">
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">
+                <AvatarFallback className="rounded-lg bg-[#ea580c] font-semibold text-white">
                   {getInitials(user.name)}
                 </AvatarFallback>
               </Avatar>

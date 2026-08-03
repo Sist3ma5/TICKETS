@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar'
 import type { User } from '@/lib/db/schema'
 import { BarChart3, Shield, Ticket, Tickets } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserMenu } from './user-menu'
@@ -56,21 +57,29 @@ export function AppSidebar({ user }: { user: User }) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex flex-col items-center gap-2 px-2 py-4">
+        <div className="flex flex-col items-center gap-2.5 px-2 py-4">
           {/*
-            Marca dibujada, no imagen: un PNG aquí dependía del optimizador de
-            Next, y este va por el archivo sin cookie de sesión, así que el
-            middleware lo mandaba al login y la imagen salía rota.
+            Placa de marca en el mismo degradado azul del icono de pestaña
+            (app/icon.svg), con el logotipo en blanco encima.
+
+            El PNG es negro sobre fondo blanco opaco, así que se invierte
+            (negro → blanco) y con `screen` el fondo —ya invertido a negro— se
+            funde con el degradado y desaparece. Queda el logo en blanco sin
+            necesidad de una versión recortada del archivo.
           */}
-          <div className="flex size-12 items-center justify-center rounded-xl bg-[#ea580c] shadow-lg shadow-[#ea580c]/30">
-            <Ticket className="size-7 text-white" aria-hidden />
+          <div className="w-full rounded-xl bg-linear-to-br from-[#1e3a8a] via-[#1d4ed8] to-[#3b82f6] px-4 py-3.5 shadow-lg shadow-[#1d4ed8]/30">
+            <Image
+              src="/logo.png"
+              alt="Bailmex"
+              width={738}
+              height={414}
+              priority
+              className="h-auto w-full mix-blend-screen invert"
+            />
           </div>
-          <div className="space-y-0.5 text-center">
-            <p className="text-sm leading-none font-semibold">Bailmex</p>
-            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
-              Soporte interno
-            </p>
-          </div>
+          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
+            Soporte interno
+          </p>
         </div>
       </SidebarHeader>
 
