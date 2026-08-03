@@ -12,6 +12,7 @@ import {
   attachmentsToUpload,
   type PickedAttachment,
 } from '@/components/tickets/attachment-picker'
+import { TicketCreatedSuccess } from '@/components/tickets/ticket-created-success'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -68,6 +69,12 @@ export function NewTicketForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [attachments, setAttachments] = useState<PickedAttachment[]>([])
+  // Datos del ticket recién creado: mientras exista, se ve la confirmación
+  // en lugar del formulario.
+  const [created, setCreated] = useState<{
+    ticketId: string
+    ticketCode: string
+  } | null>(null)
 
   const form = useForm<CreateTicketInput>({
     resolver: zodResolver(createTicketSchema),
@@ -91,15 +98,24 @@ export function NewTicketForm({
         return
       }
 
-      toast.success('Ticket creado')
-
-      if (onSuccess) {
-        onSuccess(result.ticketId)
-      } else {
-        router.push(`/ticket/${result.ticketId}`)
-      }
+      // En vez de cerrar de inmediato, se muestra la confirmación: el usuario
+      // necesita ver que su solicitud quedó registrada y cuál es su folio.
+      setCreated({
+        ticketId: result.ticketId,
+        ticketCode: formatTicketCode(values.category, result.ticketNumber),
+      })
       router.refresh()
     })
+  }
+
+  if (created) {
+    return (
+      <TicketCreatedSuccess
+        ticketId={created.ticketId}
+        ticketCode={created.ticketCode}
+        onClose={onSuccess ? () => onSuccess(created.ticketId) : undefined}
+      />
+    )
   }
 
   return (
