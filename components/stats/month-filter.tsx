@@ -65,7 +65,7 @@ export function MonthFilter({ months, current }: MonthFilterProps) {
           <ChevronLeft className="size-4" />
         </Button>
 
-        <div className="min-w-52 px-2 text-center">
+        <div className="min-w-36 px-2 text-center sm:min-w-52">
           <p className="text-sm leading-tight font-semibold">
             {activo ? formatMonthLabel(activo.month) : 'Todo el histórico'}
           </p>

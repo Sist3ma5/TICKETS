@@ -48,8 +48,9 @@ export function CategoryRouting({ itUsers }: { itUsers: AdminUser[] }) {
   }
 
   return (
-    <div className="border-border overflow-hidden rounded-lg border">
-      <table className="w-full text-sm">
+    // overflow-x-auto: en celular la tabla se desliza en vez de desbordar.
+    <div className="border-border overflow-x-auto rounded-lg border">
+      <table className="w-full min-w-120 text-sm">
         <thead className="bg-muted/40 text-muted-foreground">
           <tr className="text-left">
             <th className="px-4 py-3 font-medium">Categoría</th>

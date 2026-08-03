@@ -110,8 +110,10 @@ export function UsersManager({ users }: { users: AdminUser[] }) {
         />
       </div>
 
-      <div className="border-border overflow-hidden rounded-lg border">
-        <table className="w-full text-sm">
+      {/* overflow-x-auto: en celular la tabla no cabe y debe poder deslizarse
+          en lugar de desbordar la página entera. */}
+      <div className="border-border overflow-x-auto rounded-lg border">
+        <table className="w-full min-w-160 text-sm">
         <thead className="bg-muted/40 text-muted-foreground">
           <tr className="text-left">
             <th className="px-4 py-3 font-medium">Usuario</th>

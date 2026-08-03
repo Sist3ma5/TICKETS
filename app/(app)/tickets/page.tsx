@@ -71,7 +71,7 @@ export default async function MyTicketsPage({ searchParams }: PageProps) {
 
       <TicketStatusTabs counts={statusCounts} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <TicketsSearch />
         <TicketsFiltersDropdown />
       </div>

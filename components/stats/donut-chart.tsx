@@ -95,7 +95,7 @@ export function DonutChart({
         width={SIZE}
         height={SIZE}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
-        className="h-45 w-45 shrink-0"
+        className="h-36 w-36 shrink-0 sm:h-45 sm:w-45"
         role="img"
         aria-label={
           `Total ${total}. ` +
@@ -143,7 +143,9 @@ export function DonutChart({
       </svg>
 
       {/* Leyenda: es también la vista de tabla del gráfico. */}
-      <ul className="min-w-45 flex-1 space-y-2">
+      {/* min-w-0 en celular: la leyenda debe poder encogerse en vez de forzar
+          que la tarjeta se desborde. */}
+      <ul className="min-w-0 flex-1 space-y-2 sm:min-w-45">
         {slices.map((slice) => (
           <li key={slice.key} className="flex items-center gap-2.5 text-sm">
             <span
