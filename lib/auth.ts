@@ -10,32 +10,11 @@ import { nextCookies } from 'better-auth/next-js'
 import { db } from '@/lib/db'
 import { accounts, sessions, users, verifications } from '@/lib/db/schema'
 import { DEV_BYPASS_AUTH, MOCK_USER } from '@/lib/dev-mock'
+import { PUBLIC_URL } from '@/lib/public-url'
 
 import type { UserRole } from '@/lib/db/schema'
 
 const ALLOWED_DOMAIN = '@bailmex.com.mx'
-
-/**
- * URL pública de la app. De aquí sale el redirect_uri que se le manda a Google
- * y la lista de orígenes de confianza.
- *
- * Si `BETTER_AUTH_URL` falta, Better Auth intenta deducir la URL a partir del
- * propio servidor y termina usando algo como `https://localhost:10000` (el
- * puerto interno del contenedor). Google rechaza eso con
- * `redirect_uri_mismatch` y el login queda muerto sin dar pistas.
- *
- * Por eso: se limpia la diagonal final (una sobrante produce `//api/auth/...`,
- * que para Google es otra URL distinta) y se cae a la variable que Render
- * publica sola con la URL real del servicio.
- */
-const PUBLIC_URL =
-  normalizeUrl(process.env.BETTER_AUTH_URL) ??
-  normalizeUrl(process.env.RENDER_EXTERNAL_URL)
-
-function normalizeUrl(value: string | undefined): string | undefined {
-  const trimmed = value?.trim().replace(/\/+$/, '')
-  return trimmed ? trimmed : undefined
-}
 
 export const auth = betterAuth({
   baseURL: PUBLIC_URL,
