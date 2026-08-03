@@ -32,5 +32,12 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Se excluyen también los archivos de /public (los que traen extensión).
+  // Antes solo se libraban las rutas internas de Next, así que algo como
+  // /logo.png caía en la reja y se respondía con una redirección al login.
+  // Eso rompía el optimizador de imágenes: va por el archivo sin cookie de
+  // sesión, recibía HTML y contestaba "no es una imagen válida".
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|txt|xml|webmanifest)$).*)',
+  ],
 }

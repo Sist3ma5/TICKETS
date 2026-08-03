@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/sidebar'
 import type { User } from '@/lib/db/schema'
 import { BarChart3, Shield, Ticket, Tickets } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserMenu } from './user-menu'
@@ -57,24 +56,21 @@ export function AppSidebar({ user }: { user: User }) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex flex-col items-center gap-1 px-2 py-3">
+        <div className="flex flex-col items-center gap-2 px-2 py-4">
           {/*
-            El PNG viene en negro sobre fondo blanco opaco. La barra es oscura,
-            así que invertimos (texto negro → blanco) y con `screen` el fondo
-            —ya invertido a negro— se funde y desaparece. El brillo azul le da
-            color de marca.
+            Marca dibujada, no imagen: un PNG aquí dependía del optimizador de
+            Next, y este va por el archivo sin cookie de sesión, así que el
+            middleware lo mandaba al login y la imagen salía rota.
           */}
-          <Image
-            src="/logo.png"
-            alt="Bailmex"
-            width={738}
-            height={414}
-            priority
-            className="h-auto w-full max-w-45 mix-blend-screen invert drop-shadow-[0_0_10px_rgba(59,130,246,0.55)]"
-          />
-          <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
-            Soporte interno
-          </p>
+          <div className="flex size-12 items-center justify-center rounded-xl bg-[#ea580c] shadow-lg shadow-[#ea580c]/30">
+            <Ticket className="size-7 text-white" aria-hidden />
+          </div>
+          <div className="space-y-0.5 text-center">
+            <p className="text-sm leading-none font-semibold">Bailmex</p>
+            <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
+              Soporte interno
+            </p>
+          </div>
         </div>
       </SidebarHeader>
 
