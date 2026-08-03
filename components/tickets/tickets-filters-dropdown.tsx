@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Check, Filter, type LucideIcon } from 'lucide-react'
+import { Check, Filter, UserX, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -30,10 +30,12 @@ export function TicketsFiltersDropdown() {
   const currentSort = searchParams.get('sort')
   const currentPriority = searchParams.get('priority') as TicketPriority | null
   const currentCategory = searchParams.get('category') as TicketCategory | null
+  const onlyUnassigned = searchParams.get('unassigned') === '1'
 
   const activeCount =
     (currentPriority ? 1 : 0) +
     (currentCategory ? 1 : 0) +
+    (onlyUnassigned ? 1 : 0) +
     (currentSort === 'asc' ? 1 : 0)
 
   function update(updates: Record<string, string | null>) {
@@ -52,7 +54,7 @@ export function TicketsFiltersDropdown() {
   }
 
   function clearAll() {
-    update({ priority: null, category: null, sort: null })
+    update({ priority: null, category: null, sort: null, unassigned: null })
   }
 
   return (
@@ -81,6 +83,25 @@ export function TicketsFiltersDropdown() {
             label="Más antiguos primero"
             isActive={currentSort === 'asc'}
             onClick={() => update({ sort: 'asc' })}
+          />
+        </div>
+
+        <Separator />
+
+        {/* ATENCIÓN — mismo criterio que el indicador "Sin asignar" de
+            Estadísticas: tickets que todavía no tienen responsable. */}
+        <div className="p-2">
+          <SectionLabel>Atención</SectionLabel>
+          <FilterItem
+            label="Todos"
+            isActive={!onlyUnassigned}
+            onClick={() => update({ unassigned: null })}
+          />
+          <FilterItem
+            label="Sin atender"
+            isActive={onlyUnassigned}
+            onClick={() => update({ unassigned: '1' })}
+            icon={UserX}
           />
         </div>
 

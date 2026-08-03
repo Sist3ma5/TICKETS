@@ -25,6 +25,7 @@ import {
   eq,
   ilike,
   inArray,
+  isNull,
   max,
   sql,
   type SQL,
@@ -60,6 +61,13 @@ export interface TicketFilters {
    * así que los totales del selector no cuadrarían con los de la vista.
    */
   month?: string
+  /**
+   * Solo tickets sin responsable ("sin atender").
+   *
+   * Es el mismo criterio que usa el indicador de Estadísticas, para que el
+   * número de allá y la lista de acá siempre cuadren.
+   */
+  unassigned?: boolean
 }
 
 function buildBaseConditions(
@@ -80,6 +88,13 @@ function buildBaseConditions(
   }
   if (filters.createdById) {
     conditions.push(eq(tickets.createdById, filters.createdById))
+  }
+  if (filters.unassigned) {
+    // "Sin atender" = sin responsable Y todavía abierto. Un ticket cerrado ya
+    // no está sin atender, está resuelto. Es el mismo criterio del indicador
+    // "Sin asignar" de Estadísticas, para que ambos números coincidan.
+    conditions.push(isNull(tickets.assignedToId))
+    conditions.push(isNull(tickets.closedAt))
   }
   if (filters.month) {
     conditions.push(
