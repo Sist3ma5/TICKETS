@@ -118,7 +118,7 @@ function Section({
 }) {
   return (
     <Card>
-      <CardContent className="space-y-5 p-6">
+      <CardContent className="space-y-5 p-4 sm:p-6">
         <div className="space-y-1">
           <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
           <p className="text-muted-foreground text-sm">{description}</p>
@@ -318,6 +318,9 @@ export default async function StatsPage({ searchParams }: PageProps) {
       value: unassigned,
       hint: 'Tickets activos sin responsable',
       warn: unassigned > 0,
+      // Mismo criterio que el filtro "Sin atender" de la lista, así el número
+      // de aquí y el de allá siempre cuadran.
+      href: '/tickets/all?unassigned=1',
     },
     {
       icon: AlertTriangle,
@@ -346,7 +349,7 @@ export default async function StatsPage({ searchParams }: PageProps) {
               : `Análisis de ${total} tickets registrados.`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportMonthButton month={month} />
           <Button asChild variant="outline">
             <Link href="/tickets/all">Ver tickets</Link>
@@ -374,8 +377,8 @@ export default async function StatsPage({ searchParams }: PageProps) {
 
       {/* Focos rojos */}
       <section className="grid gap-4 sm:grid-cols-3">
-        {alerts.map((alert) => (
-          <Card key={alert.label}>
+        {alerts.map((alert) => {
+          const contenido = (
             <CardContent className="flex items-center gap-4 p-5">
               <alert.icon
                 className={
@@ -393,8 +396,23 @@ export default async function StatsPage({ searchParams }: PageProps) {
                 <p className="text-muted-foreground text-xs">{alert.hint}</p>
               </div>
             </CardContent>
-          </Card>
-        ))}
+          )
+
+          // Los focos que llevan a una lista se vuelven clicables: ver el
+          // número sin poder abrir los tickets obliga a filtrar a mano.
+          return alert.href ? (
+            <Card
+              key={alert.label}
+              className="hover:border-foreground/20 transition-colors"
+            >
+              <Link href={alert.href} className="block">
+                {contenido}
+              </Link>
+            </Card>
+          ) : (
+            <Card key={alert.label}>{contenido}</Card>
+          )
+        })}
       </section>
 
       {/* Pasteles */}
@@ -476,14 +494,14 @@ export default async function StatsPage({ searchParams }: PageProps) {
           title="Qué tanto tarda cada categoría"
           description="Mediana de días entre que se levanta el ticket y se cierra"
         >
-          <BarList rows={resolutionRows} labelWidth="w-36" />
+          <BarList rows={resolutionRows} labelWidth="w-28 sm:w-36" />
         </Section>
 
         <Section
           title="Antigüedad de lo que sigue abierto"
           description="Cuánto llevan esperando los tickets sin cerrar"
         >
-          <BarList rows={agingRows} labelWidth="w-32" />
+          <BarList rows={agingRows} labelWidth="w-24 sm:w-32" />
         </Section>
       </section>
 
@@ -493,14 +511,14 @@ export default async function StatsPage({ searchParams }: PageProps) {
           title="Carga por técnico"
           description="Tickets que ha recibido cada persona de sistemas"
         >
-          <BarList rows={workloadRows} labelWidth="w-44" />
+          <BarList rows={workloadRows} labelWidth="w-28 sm:w-44" />
         </Section>
 
         <Section
           title="Quién levanta más tickets"
           description="Personas y áreas que más apoyo piden"
         >
-          <BarList rows={requesterRows} labelWidth="w-44" />
+          <BarList rows={requesterRows} labelWidth="w-28 sm:w-44" />
         </Section>
       </section>
 

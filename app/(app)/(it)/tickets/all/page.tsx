@@ -1,4 +1,7 @@
+import { Suspense } from 'react'
+
 import { TicketCard } from '@/components/tickets/ticket-card'
+import { TicketDeletedBanner } from '@/components/tickets/ticket-deleted-banner'
 import { TicketStatusTabs } from '@/components/tickets/ticket-status-tabs'
 import { TicketsFiltersDropdown } from '@/components/tickets/tickets-filters-dropdown'
 import { TicketsSearch } from '@/components/tickets/tickets-search'
@@ -21,11 +24,13 @@ interface PageProps {
     priority?: TicketPriority
     category?: TicketCategory
     sort?: 'asc' | 'desc'
+    unassigned?: string
   }>
 }
 
 export default async function AllTicketsPage({ searchParams }: PageProps) {
   const params = await searchParams
+  const unassigned = params.unassigned === '1'
 
   const [visibleTickets, statusCounts]: [TicketWithUsers[], Record<string, number>] = await Promise.all([
     getTickets({
@@ -34,24 +39,30 @@ export default async function AllTicketsPage({ searchParams }: PageProps) {
       priority: params.priority,
       category: params.category,
       sort: params.sort,
+      unassigned,
     }),
     getStatusCounts({
       q: params.q,
       priority: params.priority,
       category: params.category,
+      unassigned,
     }),
   ])
 
   const hasFilters = Boolean(
-    params.status || params.q || params.priority || params.category,
+    params.status || params.q || params.priority || params.category || unassigned,
   )
 
   return (
     <div className="space-y-6">
       <TicketsPageHeader title="Todos los tickets" />
 
+      <Suspense fallback={null}>
+        <TicketDeletedBanner />
+      </Suspense>
+
       <TicketStatusTabs counts={statusCounts} />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <TicketsSearch />
         <TicketsFiltersDropdown />
       </div>
