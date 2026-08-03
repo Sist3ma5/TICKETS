@@ -100,10 +100,13 @@ export function TicketInteractiveSection({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const isStaff = currentUserRole === 'it' || currentUserRole === 'admin'
-  const canEdit = isStaff && !ticket.closedAt
-  // El borrado es exclusivo del rol Admin.
-  const canDelete = currentUserRole === 'admin' && !ticket.closedAt
+  const isAdmin = currentUserRole === 'admin'
+  const isStaff = currentUserRole === 'it' || isAdmin
+  // Un ticket cerrado se congela para IT, pero el admin puede reabrirlo o
+  // corregirlo. Sin esto, un cierre por error quedaba sin arreglo posible.
+  const canEdit = isStaff && (!ticket.closedAt || isAdmin)
+  // El borrado es exclusivo del rol Admin, incluso en tickets cerrados.
+  const canDelete = isAdmin
 
   // Adjuntos del ticket (sin comentario). Los de comentarios se muestran
   // dentro de cada comentario en la Actividad.
@@ -156,6 +159,15 @@ export function TicketInteractiveSection({
 
   return (
     <div className="space-y-8">
+      {/* Se avisa que está cerrado pero editable: si no, el admin no entiende
+          por qué a él sí le dejan mover los campos y a los demás no. */}
+      {ticket.closedAt && isAdmin && (
+        <p className="text-muted-foreground bg-muted/40 rounded-md border px-3 py-2 text-xs">
+          Este ticket está cerrado. Como administrador puedes reabrirlo
+          cambiando su estado, o eliminarlo.
+        </p>
+      )}
+
       {/* Estado · Categoría · Prioridad — siempre a la vista */}
       <section className="grid gap-4 sm:grid-cols-3">
         <Field label="Estado">

@@ -322,10 +322,13 @@ export async function updateTicketDetails(input: {
     return { ok: false as const, message: 'Ticket no encontrado' }
   }
 
-  if (current.closedAt) {
+  // Un ticket cerrado queda congelado para IT, pero el admin sí puede
+  // moverlo: es quien responde por el histórico y necesita poder reabrir
+  // algo que se cerró por error.
+  if (current.closedAt && user.role !== 'admin') {
     return {
       ok: false as const,
-      message: 'No se puede editar un ticket cerrado',
+      message: 'Este ticket está cerrado. Pide a un administrador que lo reabra.',
     }
   }
 
@@ -367,8 +370,23 @@ export async function updateTicketDetails(input: {
 
   if (statusChanged) {
     updates.status = newStatus!
-    if (newStatus === 'resolved') updates.resolvedAt = new Date()
-    if (newStatus === 'closed') updates.closedAt = new Date()
+
+    // Las marcas de tiempo se recalculan SIEMPRE, no solo al avanzar.
+    //
+    // Antes solo se ponían: al reabrir un ticket cerrado, closed_at se
+    // quedaba con la fecha vieja. El ticket decía "Abierto" pero para la
+    // base seguía cerrado, así que no aparecía en el filtro "Sin atender"
+    // ni contaba como activo en Estadísticas.
+    if (newStatus === 'closed') {
+      updates.closedAt = new Date()
+    } else if (newStatus === 'resolved') {
+      updates.resolvedAt = new Date()
+      updates.closedAt = null
+    } else {
+      // open / in_progress / waiting_user: vuelve a estar vivo.
+      updates.closedAt = null
+      updates.resolvedAt = null
+    }
   }
 
   if (assignmentChanged) {
