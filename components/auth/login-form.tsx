@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { authClient } from '@/lib/auth-client'
-import Image from 'next/image'
 
 export function LoginForm() {
   const searchParams = useSearchParams()
@@ -17,12 +17,26 @@ export function LoginForm() {
   async function handleSignIn() {
     setIsPending(true)
     try {
-      await authClient.signIn.social({
+      const result = await authClient.signIn.social({
         provider: 'google',
         callbackURL: callbackUrl,
         errorCallbackURL: '/login?error=unauthorized',
       })
-    } catch {
+
+      // Si no hubo redirección, algo falló: hay que decirlo. Antes el error
+      // se tragaba en silencio y el botón parecía no hacer nada.
+      if (result?.error) {
+        console.error('[login] Better Auth devolvió error:', result.error)
+        toast.error(
+          result.error.message ?? 'No se pudo iniciar sesión con Google.',
+        )
+        setIsPending(false)
+      }
+    } catch (err) {
+      console.error('[login] No se pudo contactar al servidor:', err)
+      toast.error(
+        'No se pudo contactar al servidor. Revisa tu conexión e intenta de nuevo.',
+      )
       setIsPending(false)
     }
   }
