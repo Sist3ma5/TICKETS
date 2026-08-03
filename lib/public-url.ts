@@ -37,6 +37,21 @@ export function normalizePublicUrl(
   return trimmed
 }
 
+/** Render expone el host pelón en su propia variable; se le antepone https. */
+function fromRenderHostname(): string | undefined {
+  const host = process.env.RENDER_EXTERNAL_HOSTNAME?.trim()
+  return host ? `https://${host}` : undefined
+}
+
 export const PUBLIC_URL =
   normalizePublicUrl(process.env.BETTER_AUTH_URL) ??
-  normalizePublicUrl(process.env.RENDER_EXTERNAL_URL)
+  normalizePublicUrl(process.env.RENDER_EXTERNAL_URL) ??
+  normalizePublicUrl(fromRenderHostname())
+
+// Se anuncia una vez al arrancar: sin esto, diagnosticar un
+// redirect_uri_mismatch obliga a adivinar qué URL terminó usando el servidor.
+if (process.env.NODE_ENV === 'production') {
+  console.log(
+    `[url] URL pública en uso: ${PUBLIC_URL ?? '(ninguna — Better Auth la deducirá del servidor, probablemente mal)'}`,
+  )
+}
