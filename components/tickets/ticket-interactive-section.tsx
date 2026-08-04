@@ -34,6 +34,8 @@ import {
   type ActivityItem,
 } from '@/components/tickets/ticket-activity-item'
 import { AttachmentView } from '@/components/tickets/attachment-picker'
+import { UserChatLink } from '@/components/shared/user-chat-link'
+import { CommentBody } from '@/components/tickets/comment-body'
 import { TicketCategoryBadge } from '@/components/tickets/ticket-category-badge'
 import { TicketCommentForm } from '@/components/tickets/ticket-comment-form'
 import { TicketPriorityBadge } from '@/components/tickets/ticket-priority-badge'
@@ -279,7 +281,11 @@ export function TicketInteractiveSection({
       {/* Personas y fechas */}
       <section className="grid grid-cols-2 gap-4 text-sm">
         <Field label="Reporta">
-          <span className="font-medium">{creator.name ?? creator.email}</span>
+          <UserChatLink
+            name={creator.name}
+            email={creator.email}
+            className="font-medium"
+          />
         </Field>
         <Field label="Atiende">
           {canEdit ? (
@@ -306,7 +312,7 @@ export function TicketInteractiveSection({
             </Select>
           ) : assignee ? (
             <span className="font-medium">
-              {assignee.name ?? assignee.email}
+              <UserChatLink name={assignee.name} email={assignee.email} />
             </span>
           ) : (
             <span className="text-muted-foreground italic">Sin asignar</span>
@@ -369,9 +375,11 @@ export function TicketInteractiveSection({
                     className="bg-muted space-y-2 rounded-md p-4"
                   >
                     <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="font-semibold">
-                        {author.name ?? author.email}
-                      </span>
+                      <UserChatLink
+                        name={author.name}
+                        email={author.email}
+                        className="font-semibold"
+                      />
                       {author.role === 'it' && (
                         <Badge
                           variant="secondary"
@@ -392,9 +400,13 @@ export function TicketInteractiveSection({
                     </div>
                     {/* Un comentario de solo adjuntos no lleva texto. */}
                     {comment.body && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-break-words">
-                        {comment.body}
-                      </p>
+                      <CommentBody
+                        commentId={comment.id}
+                        body={comment.body}
+                        createdAt={comment.createdAt}
+                        updatedAt={comment.updatedAt}
+                        canEdit={author.id === currentUserId}
+                      />
                     )}
                     <AttachmentView
                       items={attachments.filter(

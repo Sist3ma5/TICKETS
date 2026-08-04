@@ -545,3 +545,71 @@ export async function deleteTicket(ticketId: string) {
     return { ok: false as const, message: 'No se pudo eliminar el ticket' }
   }
 }
+
+/**
+ * Editar el texto de un comentario, al estilo de WhatsApp.
+ *
+ * Solo el autor puede editar lo suyo, sin importar su rol: un comentario es
+ * la voz de quien lo escribió, y dejar que otro lo modifique volvería el
+ * historial poco confiable. Ni siquiera el admin edita comentarios ajenos.
+ *
+ * No se guarda una marca aparte de "editado": `updated_at` ya existe y
+ * arranca igual a `created_at`, así que basta con compararlos.
+ */
+export async function updateComment(input: {
+  commentId: string
+  body: string
+}) {
+  const user = await requireUser()
+
+  const parsed = z
+    .object({
+      commentId: z.string().uuid(),
+      body: z.string().trim().min(1).max(2000),
+    })
+    .safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      ok: false as const,
+      message: 'El comentario no puede quedar vacío.',
+    }
+  }
+
+  const { commentId, body } = parsed.data
+
+  if (DEV_BYPASS_AUTH) {
+    return { ok: true as const }
+  }
+
+  const [comentario] = await db
+    .select({ authorId: ticketComments.authorId })
+    .from(ticketComments)
+    .where(eq(ticketComments.id, commentId))
+    .limit(1)
+
+  if (!comentario) {
+    return { ok: false as const, message: 'Comentario no encontrado' }
+  }
+
+  // Se valida aquí, no solo escondiendo el botón: la acción se puede llamar
+  // directo desde el cliente.
+  if (comentario.authorId !== user.id) {
+    return {
+      ok: false as const,
+      message: 'Solo puedes editar tus propios comentarios.',
+    }
+  }
+
+  try {
+    await db
+      .update(ticketComments)
+      .set({ body, updatedAt: new Date() })
+      .where(eq(ticketComments.id, commentId))
+
+    return { ok: true as const }
+  } catch (err) {
+    console.error('Error al editar el comentario:', err)
+    return { ok: false as const, message: 'No se pudo editar el comentario' }
+  }
+}
