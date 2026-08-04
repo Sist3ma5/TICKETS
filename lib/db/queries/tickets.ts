@@ -68,6 +68,12 @@ export interface TicketFilters {
    * número de allá y la lista de acá siempre cuadren.
    */
   unassigned?: boolean
+  /**
+   * Cuántas tarjetas traer. La lista crece ~100 tickets al mes y nadie
+   * recorre cientos: sin tope, cada carga arrastra la tabla entera y el
+   * navegador tiene que pintarla toda.
+   */
+  limit?: number
 }
 
 function buildBaseConditions(
@@ -104,6 +110,18 @@ function buildBaseConditions(
   return conditions
 }
 
+/** Caracteres de descripción que se mandan a la lista. */
+const PREVIEW_DESCRIPCION = 180
+
+/**
+ * Tickets para la vista de tarjetas.
+ *
+ * Trae SOLO lo que pinta la tarjeta, no las filas completas. Antes usaba la
+ * API relacional con `with: { createdBy: true, assignedTo: true }`, y eso
+ * arrastraba las ocho columnas de cada usuario repetidas en cada ticket, más
+ * la descripción entera —hay algunas de 2,000 caracteres— para pintar dos
+ * renglones recortados. Eran 193 KB por carga.
+ */
 export async function getTickets(filters: TicketFilters) {
   // ⚠️ Solo desarrollo/visual: datos de ejemplo sin BD.
   if (DEV_BYPASS_AUTH) return getMockTickets(filters)
@@ -113,17 +131,52 @@ export async function getTickets(filters: TicketFilters) {
     conditions.push(eq(tickets.status, filters.status))
   }
 
-  return db.query.tickets.findMany({
-    where: conditions.length ? and(...conditions) : undefined,
-    with: {
-      createdBy: true,
-      assignedTo: true,
-    },
-    orderBy:
-      filters.sort === 'asc'
-        ? [asc(tickets.createdAt)]
-        : [desc(tickets.createdAt)],
-  })
+  const creador = alias(users, 'creador')
+  const asignado = alias(users, 'asignado')
+
+  const filas = await db
+    .select({
+      id: tickets.id,
+      number: tickets.number,
+      title: tickets.title,
+      // La tarjeta recorta a dos renglones (line-clamp-2), así que se recorta
+      // en la base: mandar 2,000 caracteres para mostrar dos líneas es
+      // transferencia tirada a la basura.
+      description: sql<string>`left(${tickets.description}, ${PREVIEW_DESCRIPCION})`,
+      status: tickets.status,
+      priority: tickets.priority,
+      category: tickets.category,
+      createdAt: tickets.createdAt,
+      creadorNombre: creador.name,
+      creadorCorreo: creador.email,
+      asignadoNombre: asignado.name,
+      asignadoCorreo: asignado.email,
+    })
+    .from(tickets)
+    .innerJoin(creador, eq(creador.id, tickets.createdById))
+    .leftJoin(asignado, eq(asignado.id, tickets.assignedToId))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(
+      filters.sort === 'asc' ? asc(tickets.createdAt) : desc(tickets.createdAt),
+    )
+    .limit(filters.limit ?? 500)
+
+  // Se rearma la forma que espera la tarjeta. Con leftJoin el asignado llega
+  // como columnas nulas, no como objeto ausente, así que hay que distinguirlo.
+  return filas.map((f) => ({
+    id: f.id,
+    number: f.number,
+    title: f.title,
+    description: f.description,
+    status: f.status,
+    priority: f.priority,
+    category: f.category,
+    createdAt: f.createdAt,
+    createdBy: { name: f.creadorNombre, email: f.creadorCorreo },
+    assignedTo: f.asignadoCorreo
+      ? { name: f.asignadoNombre, email: f.asignadoCorreo }
+      : null,
+  }))
 }
 
 export async function getStatusCounts(
@@ -405,9 +458,28 @@ type UserRef = Pick<User, 'id' | 'name' | 'email'>
 
 export type ITUser = UserRef
 
-export type TicketWithUsers = Ticket & {
-  createdBy: User
-  assignedTo: User | null
+/**
+ * Ticket tal como lo pinta la tarjeta de la lista.
+ *
+ * Es a propósito más angosto que la fila completa: solo lo que se muestra.
+ * Si la tarjeta llega a necesitar otro campo, se agrega aquí y en el select
+ * de getTickets — y así queda a la vista lo que cuesta cada campo nuevo.
+ */
+export type TicketWithUsers = Pick<
+  Ticket,
+  | 'id'
+  | 'number'
+  | 'title'
+  | 'description'
+  | 'status'
+  | 'priority'
+  | 'category'
+  | 'createdAt'
+> & {
+  // `name` puede venir nulo: el asignado sale de un leftJoin. La tarjeta ya
+  // cae al correo cuando no hay nombre.
+  createdBy: { name: string | null; email: string }
+  assignedTo: { name: string | null; email: string } | null
 }
 
 export type TicketComment = {

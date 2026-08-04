@@ -4,6 +4,10 @@ import { TicketCard } from '@/components/tickets/ticket-card'
 import { TicketDeletedBanner } from '@/components/tickets/ticket-deleted-banner'
 import { TicketStatusTabs } from '@/components/tickets/ticket-status-tabs'
 import { TicketsFiltersDropdown } from '@/components/tickets/tickets-filters-dropdown'
+import {
+  TicketsLoadMore,
+  TAMANO_PAGINA,
+} from '@/components/tickets/tickets-load-more'
 import { TicketsSearch } from '@/components/tickets/tickets-search'
 import { getStatusCounts, getTickets } from '@/lib/db/queries/tickets'
 import { TicketsEmptyState } from '@/components/tickets/tickets-empty-state'
@@ -25,12 +29,20 @@ interface PageProps {
     category?: TicketCategory
     sort?: 'asc' | 'desc'
     unassigned?: string
+    ver?: string
   }>
 }
 
 export default async function AllTicketsPage({ searchParams }: PageProps) {
   const params = await searchParams
   const unassigned = params.unassigned === '1'
+
+  // Cuántas tarjetas pedir. Se acota para que una URL a mano no pueda pedir
+  // la tabla entera y tumbar el rendimiento.
+  const ver = Math.min(
+    Math.max(Number(params.ver) || TAMANO_PAGINA, TAMANO_PAGINA),
+    500,
+  )
 
   const [visibleTickets, statusCounts]: [TicketWithUsers[], Record<string, number>] = await Promise.all([
     getTickets({
@@ -40,6 +52,7 @@ export default async function AllTicketsPage({ searchParams }: PageProps) {
       category: params.category,
       sort: params.sort,
       unassigned,
+      limit: ver,
     }),
     getStatusCounts({
       q: params.q,
@@ -70,11 +83,22 @@ export default async function AllTicketsPage({ searchParams }: PageProps) {
       {visibleTickets.length === 0 ? (
         <TicketsEmptyState hasFilters={hasFilters} pathname="/tickets/all" />
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visibleTickets.map((ticket: TicketWithUsers) => (
-            <TicketCard key={ticket.id} ticket={ticket} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {visibleTickets.map((ticket: TicketWithUsers) => (
+              <TicketCard key={ticket.id} ticket={ticket} />
+            ))}
+          </div>
+
+          <TicketsLoadMore
+            mostrando={visibleTickets.length}
+            total={
+              params.status ? (statusCounts[params.status] ?? 0) : statusCounts.all
+            }
+            params={params}
+            pathname="/tickets/all"
+          />
+        </>
       )}
     </div>
   )
