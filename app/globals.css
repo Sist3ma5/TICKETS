@@ -203,3 +203,35 @@
     linear-gradient(160deg, #0d1220 0%, #090c12 45%, #05070a 100%);
   background-attachment: fixed;
 }
+
+/*
+ * Barra LED bajo el logotipo: una luz blanca que recorre la línea de lado a
+ * lado, como una tira de led.
+ *
+ * Se anima `transform` y no `left`: así el navegador la resuelve en el
+ * compositor y no rehace el diseño en cada cuadro. La luz mide 25% del ancho,
+ * de ahí los porcentajes —van sobre su propio tamaño, no sobre el del riel—:
+ * translateX(300%) deja su borde derecho justo en el extremo.
+ */
+@keyframes barrido-led {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(410%);
+  }
+}
+
+.led-luz {
+  animation: barrido-led 3.2s ease-in-out infinite alternate;
+}
+
+/* Movimiento constante en pantalla puede marear; se respeta la preferencia
+   del sistema y la luz se queda quieta y centrada. */
+@media (prefers-reduced-motion: reduce) {
+  .led-luz {
+    animation: none;
+    transform: translateX(150%);
+    opacity: 0.5;
+  }
+}

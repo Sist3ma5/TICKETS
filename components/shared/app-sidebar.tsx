@@ -77,6 +77,14 @@ export function AppSidebar({ user }: { user: User }) {
               className="h-auto w-full mix-blend-screen invert"
             />
           </div>
+          {/* Tira de led: riel casi invisible con una luz que lo recorre. */}
+          <div
+            aria-hidden
+            className="relative h-px w-full overflow-hidden rounded-full bg-white/10"
+          >
+            <span className="led-luz absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-transparent via-white to-transparent shadow-[0_0_6px_1px_rgba(255,255,255,0.5)]" />
+          </div>
+
           <p className="text-muted-foreground text-[10px] font-medium tracking-[0.2em] uppercase">
             Soporte interno
           </p>
