@@ -24,6 +24,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import { addComment } from '@/lib/actions/tickets'
+import { playSound } from '@/lib/sounds'
 import {
   commentBodySchema,
   type CommentBodyInput,
@@ -66,6 +67,7 @@ export function TicketCommentForm({ ticketId }: TicketCommentFormProps) {
         return
       }
 
+      playSound('comentario')
       toast.success('Comentario agregado')
       form.reset()
       setAttachments([])

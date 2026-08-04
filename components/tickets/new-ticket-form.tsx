@@ -34,6 +34,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import { createTicket } from '@/lib/actions/tickets'
+import { playSound } from '@/lib/sounds'
 import {
   CATEGORY_COLORS,
   CATEGORY_ICONS,
@@ -100,6 +101,7 @@ export function NewTicketForm({
 
       // En vez de cerrar de inmediato, se muestra la confirmación: el usuario
       // necesita ver que su solicitud quedó registrada y cuál es su folio.
+      playSound('ticket')
       setCreated({
         ticketId: result.ticketId,
         ticketCode: formatTicketCode(values.category, result.ticketNumber),

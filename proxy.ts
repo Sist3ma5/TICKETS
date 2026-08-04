@@ -38,6 +38,6 @@ export const config = {
   // Eso rompía el optimizador de imágenes: va por el archivo sin cookie de
   // sesión, recibía HTML y contestaba "no es una imagen válida".
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|txt|xml|webmanifest)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|avif|mp3|wav|ogg|m4a|woff|woff2|txt|xml|webmanifest)$).*)',
   ],
 }
