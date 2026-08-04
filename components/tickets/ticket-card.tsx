@@ -9,6 +9,7 @@ import {
   formatTicketCode,
 } from '@/lib/constants'
 import type { TicketWithUsers } from '@/lib/db/queries/tickets'
+import { UserChatLink } from '@/components/shared/user-chat-link'
 import { TicketPriorityBadge } from './ticket-priority-badge'
 import { TicketStatusBadge } from './ticket-status-badge'
 
@@ -66,7 +67,10 @@ export function TicketCard({ ticket }: TicketCardProps) {
               Reporta
             </p>
             <p className="truncate text-sm">
-              {ticket.createdBy.name ?? ticket.createdBy.email}
+              <UserChatLink
+                name={ticket.createdBy.name}
+                email={ticket.createdBy.email}
+              />
             </p>
           </div>
           <div className="min-w-0">
@@ -75,7 +79,10 @@ export function TicketCard({ ticket }: TicketCardProps) {
             </p>
             <p className="truncate text-sm">
               {ticket.assignedTo ? (
-                (ticket.assignedTo.name ?? ticket.assignedTo.email)
+                <UserChatLink
+                  name={ticket.assignedTo.name}
+                  email={ticket.assignedTo.email}
+                />
               ) : (
                 <span className="text-muted-foreground italic">
                   Sin asignar
