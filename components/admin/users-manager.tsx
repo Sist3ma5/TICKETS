@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { avatarColor, avatarIniciales } from '@/lib/avatar-color'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -36,15 +37,6 @@ import type { AdminUser } from '@/lib/dev-mock'
 import type { TicketCategory, UserRole } from '@/lib/db/schema'
 
 const ROLES: UserRole[] = ['user', 'it', 'admin']
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join('')
-    .toUpperCase()
-}
 
 export function UsersManager({ users }: { users: AdminUser[] }) {
   const [rows, setRows] = useState(users)
@@ -137,8 +129,11 @@ export function UsersManager({ users }: { users: AdminUser[] }) {
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="size-8">
-                    <AvatarFallback className="text-xs">
-                      {initials(u.name)}
+                    <AvatarFallback
+                      className="text-xs font-semibold text-white"
+                      style={{ backgroundColor: avatarColor(u.email) }}
+                    >
+                      {avatarIniciales(u.name, u.email)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/shared/app-sidebar'
+import { EntranceSound } from '@/components/shared/entrance-sound'
 import { ThemeToggle } from '@/components/shared/theme-toggle'
 import {
   SidebarInset,
@@ -26,21 +27,17 @@ export default async function AppLayout({
 
   return (
     <SidebarProvider>
+      {/* Acorde de bienvenida, una vez por sesion. */}
+      <EntranceSound />
       <AppSidebar user={user} />
       <SidebarInset className="bg-transparent">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
+          {/* El usuario vive en el menú de la barra lateral, no aquí: tenerlo
+              en dos lugares duplicaba el avatar y dejaba las opciones de
+              cuenta repartidas. */}
           <div className="ml-auto flex items-center gap-3">
             <ThemeToggle />
-            {/* Naranja: acento de "usuario" sobre el azul de la marca. */}
-            <span className="flex size-8 items-center justify-center rounded-full bg-[#ea580c] text-xs font-semibold text-white">
-              {(user.name ?? user.email)
-                .split(' ')
-                .map((p) => p[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase()}
-            </span>
           </div>
         </header>
         {/* Menos aire en celular: 24px por lado se comen la pantalla. */}
