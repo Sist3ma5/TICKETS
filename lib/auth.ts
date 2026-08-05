@@ -6,6 +6,7 @@ import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { APIError } from 'better-auth/api'
 import { nextCookies } from 'better-auth/next-js'
+import { eq } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { accounts, sessions, users, verifications } from '@/lib/db/schema'
@@ -15,6 +16,19 @@ import { PUBLIC_URL } from '@/lib/public-url'
 import type { UserRole } from '@/lib/db/schema'
 
 const ALLOWED_DOMAIN = '@bailmex.com.mx'
+
+/**
+ * Cuentas que entran con rol de IT desde la primera vez.
+ *
+ * Todo el mundo se da de alta como `user`, y el rol se cambia después desde
+ * Administración. Pero eso solo funciona con gente que YA entró alguna vez:
+ * hasta entonces no existe la fila que editar. Esta lista cubre ese hueco
+ * para quien se incorpora al equipo de sistemas.
+ *
+ * Una vez que la persona entró, su rol se administra desde el panel como
+ * el de cualquier otro; sacarla de aquí no le quita nada.
+ */
+const CORREOS_CON_ROL_IT = new Set(['linorangel@bailmex.com.mx'])
 
 export const auth = betterAuth({
   baseURL: PUBLIC_URL,
@@ -70,6 +84,26 @@ export const auth = betterAuth({
             })
           }
           return { data: user }
+        },
+        after: async (user) => {
+          const email = user.email?.toLowerCase() ?? ''
+          if (!CORREOS_CON_ROL_IT.has(email)) return
+
+          // Se hace aquí y no en `before` porque el campo `role` está
+          // declarado con `input: false`: Better Auth lo ignora al crear,
+          // justo para que nadie pueda mandarse un rol al registrarse. Se
+          // corrige con un UPDATE en cuanto la fila existe.
+          try {
+            await db
+              .update(users)
+              .set({ role: 'it', updatedAt: new Date() })
+              .where(eq(users.id, user.id))
+          } catch (err) {
+            console.error(
+              `[auth] No se pudo asignar el rol de IT a ${email}:`,
+              err,
+            )
+          }
         },
       },
     },
