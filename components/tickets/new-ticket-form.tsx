@@ -44,7 +44,7 @@ import {
   PRIORITY_LABELS,
   TICKET_CATEGORIES,
 } from '@/lib/constants'
-import type { TicketPriority } from '@/lib/db/schema'
+import type { TicketCategory, TicketPriority } from '@/lib/db/schema'
 import { cn } from '@/lib/utils'
 import {
   createTicketSchema,
@@ -54,6 +54,8 @@ import {
 const PRIORITIES: TicketPriority[] = ['low', 'medium', 'high']
 
 interface NewTicketFormProps {
+  /** Categorías que se pueden elegir. Vienen del catálogo en la base. */
+  categorias?: TicketCategory[]
   /** Siguiente folio, para mostrar el "ID automático" en vivo. */
   nextNumber: number
   /** Si se pasa, se llama tras crear en vez de navegar (uso en modal). */
@@ -63,6 +65,7 @@ interface NewTicketFormProps {
 }
 
 export function NewTicketForm({
+  categorias = TICKET_CATEGORIES,
   nextNumber,
   onSuccess,
   onCancel,
@@ -132,7 +135,7 @@ export function NewTicketForm({
               <FormLabel>¿Qué tipo de ayuda necesitas?</FormLabel>
               <FormControl>
                 <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-4">
-                  {TICKET_CATEGORIES.map((cat) => {
+                  {categorias.map((cat) => {
                     const Icon = CATEGORY_ICONS[cat]
                     const color = CATEGORY_COLORS[cat]
                     const selected = field.value === cat

@@ -7,6 +7,7 @@ import {
   TAMANO_PAGINA,
 } from '@/components/tickets/tickets-load-more'
 import { TicketsSearch } from '@/components/tickets/tickets-search'
+import { getActiveCategories } from '@/lib/db/queries/categories'
 import { getCurrentUser } from '@/lib/auth'
 import { getStatusCounts, getTickets } from '@/lib/db/queries/tickets'
 import { redirect } from 'next/navigation'
@@ -85,7 +86,9 @@ export default async function MyTicketsPage({ searchParams }: PageProps) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TicketsSearch />
-        <TicketsFiltersDropdown />
+        <TicketsFiltersDropdown
+          categorias={(await getActiveCategories()).map((c) => c.key)}
+        />
       </div>
 
       {visibleTickets.length === 0 ? (

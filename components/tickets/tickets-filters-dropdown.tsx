@@ -21,7 +21,12 @@ import {
 } from '@/lib/constants'
 import type { TicketCategory, TicketPriority } from '@/lib/db/schema'
 
-export function TicketsFiltersDropdown() {
+export function TicketsFiltersDropdown({
+  categorias = TICKET_CATEGORIES,
+}: {
+  /** Solo las categorías activas del catálogo. */
+  categorias?: TicketCategory[]
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -136,7 +141,7 @@ export function TicketsFiltersDropdown() {
             isActive={!currentCategory}
             onClick={() => update({ category: null })}
           />
-          {TICKET_CATEGORIES.map((c) => (
+          {categorias.map((c) => (
             <FilterItem
               key={c}
               label={CATEGORY_LABELS[c]}

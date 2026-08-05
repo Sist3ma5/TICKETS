@@ -89,6 +89,8 @@ interface TicketInteractiveSectionProps {
   currentUserRole: UserRole
   /** Para saber si un técnico de IT trae este ticket asignado. */
   currentUserId: string
+  /** Categorías activas, para el selector. */
+  categorias?: TicketCategory[]
   timeline: TimelineItem[]
 }
 
@@ -100,6 +102,7 @@ export function TicketInteractiveSection({
   itUsers,
   currentUserRole,
   currentUserId,
+  categorias = TICKET_CATEGORIES,
   timeline,
 }: TicketInteractiveSectionProps) {
   const router = useRouter()
@@ -230,7 +233,7 @@ export function TicketInteractiveSection({
                 })()}
               </SelectTrigger>
               <SelectContent>
-                {TICKET_CATEGORIES.map((c) => {
+                {categorias.map((c) => {
                   const Icon = CATEGORY_ICONS[c]
                   return (
                     <SelectItem key={c} value={c}>

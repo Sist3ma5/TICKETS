@@ -1,4 +1,5 @@
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
+import { getActiveCategories } from '@/lib/db/queries/categories'
 import { getNextTicketNumber } from '@/lib/db/queries/tickets'
 
 export const dynamic = 'force-dynamic'
@@ -18,7 +19,10 @@ export default async function NewTicketPage() {
         </p>
       </header>
 
-      <NewTicketForm nextNumber={nextNumber} />
+      <NewTicketForm
+        nextNumber={nextNumber}
+        categorias={(await getActiveCategories()).map((c) => c.key)}
+      />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { Mail, Shield } from 'lucide-react'
 
 import { CategoriesManager } from '@/components/admin/categories-manager'
+import { getCategoriesMeta } from '@/lib/db/queries/categories'
 import { CategoryRouting } from '@/components/admin/category-routing'
 import { UsersManager } from '@/components/admin/users-manager'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -20,11 +21,14 @@ export default async function AdminPage() {
 
   const users = await getAllUsersForAdmin()
 
-  const categories = TICKET_CATEGORIES.map((key) => ({
-    key,
-    label: CATEGORY_LABELS[key],
-    prefix: CATEGORY_PREFIXES[key],
-    color: CATEGORY_COLORS[key],
+  // Del catálogo en la base, no de la lista fija: si no, una categoría
+  // retirada seguiría apareciendo aquí.
+  const categories = (await getCategoriesMeta()).map((c) => ({
+    key: c.key,
+    label: c.label,
+    prefix: c.prefix,
+    color: c.color,
+    active: c.active,
   }))
 
   return (

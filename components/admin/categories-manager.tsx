@@ -1,6 +1,7 @@
 'use client'
 
-import { Pencil, Plus, Tag, Trash2 } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, Tag, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
@@ -30,6 +31,7 @@ import { Label } from '@/components/ui/label'
 import {
   createCategory,
   deleteCategory,
+  restoreCategory,
   updateCategory,
 } from '@/lib/actions/admin'
 import { CATEGORY_ICONS } from '@/lib/constants'
@@ -40,6 +42,8 @@ export interface CategoryItem {
   label: string
   prefix: string
   color: string
+  /** Falso = retirada del catálogo. Sigue existiendo, pero ya no se elige. */
+  active?: boolean
 }
 
 const PRESET_COLORS = [
@@ -61,17 +65,46 @@ function iconFor(key: string) {
 }
 
 export function CategoriesManager({ categories }: { categories: CategoryItem[] }) {
+  const router = useRouter()
   const [rows, setRows] = useState(categories)
   const [isPending, startTransition] = useTransition()
   const [editing, setEditing] = useState<CategoryItem | null>(null)
   const [creating, setCreating] = useState(false)
 
   function handleDelete(key: string) {
-    setRows((prev) => prev.filter((c) => c.key !== key))
     startTransition(async () => {
       const result = await deleteCategory({ key })
-      if (!result.ok) toast.error(result.message)
-      else toast.success('Categoría eliminada')
+      if (!result.ok) {
+        toast.error(result.message)
+        return
+      }
+      // Se marca retirada en vez de sacarla de la lista: el admin necesita
+      // poder verla para restaurarla.
+      setRows((prev) =>
+        prev.map((c) => (c.key === key ? { ...c, active: false } : c)),
+      )
+      const movidos = result.moved ?? 0
+      toast.success(
+        movidos > 0
+          ? `Categoría retirada · ${movidos} ${movidos === 1 ? 'ticket pasó' : 'tickets pasaron'} a "Otro"`
+          : 'Categoría retirada',
+      )
+      router.refresh()
+    })
+  }
+
+  function handleRestore(key: string) {
+    startTransition(async () => {
+      const result = await restoreCategory({ key })
+      if (!result.ok) {
+        toast.error(result.message)
+        return
+      }
+      setRows((prev) =>
+        prev.map((c) => (c.key === key ? { ...c, active: true } : c)),
+      )
+      toast.success('Categoría restaurada')
+      router.refresh()
     })
   }
 
@@ -91,7 +124,10 @@ export function CategoriesManager({ categories }: { categories: CategoryItem[] }
             return (
               <li
                 key={cat.key}
-                className="flex items-center gap-3 px-4 py-3"
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3',
+                  cat.active === false && 'opacity-55',
+                )}
               >
                 <span
                   className="flex size-9 shrink-0 items-center justify-center rounded-md border"
@@ -105,12 +141,31 @@ export function CategoriesManager({ categories }: { categories: CategoryItem[] }
                 </span>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{cat.label}</p>
+                  <p className="flex items-center gap-2 truncate font-medium">
+                    {cat.label}
+                    {cat.active === false && (
+                      <span className="text-muted-foreground bg-muted rounded px-1.5 py-0.5 text-[10px] font-normal tracking-wide uppercase">
+                        Retirada
+                      </span>
+                    )}
+                  </p>
                   <p className="text-muted-foreground font-mono text-xs tracking-wider">
                     {cat.prefix}-0000
                   </p>
                 </div>
 
+                {cat.active === false ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRestore(cat.key)}
+                    disabled={isPending}
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Restaurar
+                  </Button>
+                ) : (
+                  <>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -138,8 +193,10 @@ export function CategoriesManager({ categories }: { categories: CategoryItem[] }
                         ¿Quitar la categoría “{cat.label}”?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Los tickets existentes de esta categoría deberán
-                        reasignarse a otra. Esta acción no se puede deshacer.
+                        Sus tickets pasarán automáticamente a la categoría
+                        “Otro”, y dejará de aparecer al crear tickets y en los
+                        filtros. Podrás restaurarla después, pero los tickets
+                        no regresan solos a esta categoría.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -153,6 +210,8 @@ export function CategoriesManager({ categories }: { categories: CategoryItem[] }
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                  </>
+                )}
               </li>
             )
           })}

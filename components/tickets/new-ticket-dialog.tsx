@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 
 import { NewTicketForm } from '@/components/tickets/new-ticket-form'
+import type { TicketCategory } from '@/lib/db/schema'
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-export function NewTicketDialog({ nextNumber }: { nextNumber: number }) {
+export function NewTicketDialog({
+  nextNumber,
+  categorias,
+}: {
+  nextNumber: number
+  /** Categorías activas del catálogo. */
+  categorias?: TicketCategory[]
+}) {
   const router = useRouter()
 
   function close() {
@@ -33,6 +41,7 @@ export function NewTicketDialog({ nextNumber }: { nextNumber: number }) {
 
         <NewTicketForm
           nextNumber={nextNumber}
+          categorias={categorias}
           onSuccess={close}
           onCancel={close}
         />
