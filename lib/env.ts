@@ -13,7 +13,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
 
-  // Email — placeholder, no requerido aún
+  // Email. Ninguna es obligatoria: sin ellas la app corre, solo que no
+  // manda avisos. Se envía por Gmail (Workspace) y Resend queda de respaldo.
+  GMAIL_USER: z.string().optional(),
+  GMAIL_APP_PASSWORD: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
 })
