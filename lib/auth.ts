@@ -52,6 +52,19 @@ export const auth = betterAuth({
       prompt: 'select_account',
     },
   },
+  account: {
+    accountLinking: {
+      // Cuando una cuenta de Google se enlaza a un usuario que ya existía en
+      // la base, se toman de Google su nombre y su foto.
+      //
+      // Hace falta para las altas hechas a mano: se crea la fila con el
+      // correo y el rol, pero el nombre real solo lo sabe Google. Sin esto,
+      // el nombre provisional se quedaría para siempre —no hay pantalla para
+      // editarlo—. Solo corre al enlazar por primera vez, así que no afecta a
+      // quienes ya entraron.
+      updateUserInfoOnLink: true,
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 días — sesión persistente ("recordar sesión")
     updateAge: 60 * 60 * 24, // refresca el expiry máximo 1 vez al día si hay actividad
